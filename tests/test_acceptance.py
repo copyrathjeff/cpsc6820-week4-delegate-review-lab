@@ -1,0 +1,165 @@
+"""Acceptance tests for the Week 4 delegated task (AC1-AC10).
+
+Written by the human supervisor BEFORE the agent received the task, and
+committed to `main` only. The agent's branch was cut from the earlier baseline
+commit, so these files were never in its working tree: it could neither read
+them nor edit them. They are applied at Checkpoint 3.
+
+Every test drives the CLI as a subprocess. That is deliberate. Test gaming is a
+named failure mode, and an agent can always satisfy an internal unit test by
+changing the internals the test asserts against. It cannot satisfy an
+observable-behavior test without the behavior actually being correct.
+"""
+
+import ast
+import os
+import subprocess
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCRIPT = os.path.join(REPO, "campaign_report.py")
+FIXTURE = os.path.join(REPO, "data", "campaigns.csv")
+GOLDEN = os.path.join(REPO, "tests", "golden", "baseline_report.txt")
+
+HEADER = "campaign_id,name,send_date,recipients,opens,clicks,orders,revenue"
+GOOD_ROW = "c1,Alpha,2026-01-01,1000,400,50,10,900.00"
+
+
+def run_cli(*args):
+    """Run the CLI and return (exit_code, stdout, stderr)."""
+    proc = subprocess.run(
+        [sys.executable, SCRIPT, *args],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def write_csv(tmp_path, *lines):
+    """Write a CSV with the standard header plus *lines*; return its path."""
+    path = tmp_path / "input.csv"
+    path.write_text("\n".join([HEADER, *lines]) + "\n", encoding="utf-8")
+    return str(path)
+
+
+def campaign_rows(stdout):
+    """Extract just the campaign table body from a report."""
+    lines = stdout.splitlines()
+    start = next(i for i, ln in enumerate(lines) if set(ln.strip()) == {"-"}) + 1
+    body = []
+    for line in lines[start:]:
+        if not line.strip():
+            break
+        body.append(line)
+    return body
+
+
+def assert_clean_failure(code, stderr):
+    """A failure must be non-zero, explained on stderr, and not a traceback."""
+    assert code != 0, "expected a non-zero exit code"
+    assert stderr.strip(), "expected an explanation on stderr"
+    assert "Traceback" not in stderr, f"leaked a traceback:\n{stderr}"
+
+
+# --- AC1 -------------------------------------------------------------------
+
+
+def test_ac1_valid_run_is_byte_identical_to_golden():
+    code, out, err = run_cli(FIXTURE)
+    assert code == 0, err
+    with open(GOLDEN, encoding="utf-8") as handle:
+        assert out == handle.read()
+
+
+# --- AC2-AC7: error handling ----------------------------------------------
+
+
+def test_ac2_missing_file_names_the_path():
+    code, _, err = run_cli("data/does_not_exist.csv")
+    assert_clean_failure(code, err)
+    assert "does_not_exist.csv" in err
+
+
+def test_ac3_missing_required_column_is_named(tmp_path):
+    path = tmp_path / "no_revenue.csv"
+    path.write_text(
+        "campaign_id,name,send_date,recipients,opens,clicks,orders\n"
+        "c1,Alpha,2026-01-01,1000,400,50,10\n",
+        encoding="utf-8",
+    )
+    code, _, err = run_cli(str(path))
+    assert_clean_failure(code, err)
+    assert "revenue" in err
+
+
+def test_ac4_non_numeric_value_names_row_and_column(tmp_path):
+    """Test case 1. A generic 'bad CSV' message fails this on specificity."""
+    path = write_csv(
+        tmp_path,
+        GOOD_ROW,
+        "c2,Beta,2026-01-08,forty-thousand,400,50,10,900.00",
+    )
+    code, _, err = run_cli(path)
+    assert_clean_failure(code, err)
+    assert "recipients" in err, f"should name the column:\n{err}"
+    assert "2" in err, f"should name the offending row:\n{err}"
+
+
+def test_ac5_negative_value_is_rejected(tmp_path):
+    path = write_csv(tmp_path, "c1,Alpha,2026-01-01,1000,400,50,10,-900.00")
+    code, _, err = run_cli(path)
+    assert_clean_failure(code, err)
+    assert "revenue" in err
+
+
+def test_ac6_zero_recipients_never_divides_by_zero(tmp_path):
+    path = write_csv(tmp_path, GOOD_ROW, "c2,Beta,2026-01-08,0,0,0,0,0.00")
+    code, out, err = run_cli(path)
+    assert "ZeroDivisionError" not in err
+    assert "Traceback" not in err
+    # Either reject it or render it safely, but say something either way.
+    assert err.strip() or "Beta" in out
+
+
+def test_ac7_header_only_csv_says_no_campaigns(tmp_path):
+    path = write_csv(tmp_path)
+    code, _, err = run_cli(path)
+    assert_clean_failure(code, err)
+
+
+# --- AC8-AC9: --top N ------------------------------------------------------
+
+
+def test_ac8_top_3_ranks_by_revenue_per_recipient():
+    """Test case 2. Ranking by raw revenue would reorder 2nd and 3rd place."""
+    code, out, err = run_cli(FIXTURE, "--top", "3")
+    assert code == 0, err
+    rows = campaign_rows(out)
+    assert len(rows) == 3, f"expected exactly 3 rows, got {len(rows)}:\n{out}"
+    assert rows[0].startswith("Last Chance Spring Sale")
+    assert rows[1].startswith("Bundle + Save 20%")
+    assert rows[2].startswith("Mothers Day Gift Guide")
+
+
+def test_ac9_invalid_top_values_are_rejected():
+    for bad in ("0", "-1"):
+        code, _, err = run_cli(FIXTURE, "--top", bad)
+        assert code != 0, f"--top {bad} should be rejected"
+        assert "Traceback" not in err
+
+
+# --- AC10 ------------------------------------------------------------------
+
+
+def test_ac10_standard_library_only():
+    with open(SCRIPT, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+    imported = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            imported.add(node.module.split(".")[0])
+    outside = imported - sys.stdlib_module_names
+    assert not outside, f"non-stdlib imports: {sorted(outside)}"
