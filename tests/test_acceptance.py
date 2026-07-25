@@ -113,13 +113,26 @@ def test_ac5_negative_value_is_rejected(tmp_path):
     assert "revenue" in err
 
 
-def test_ac6_zero_recipients_never_divides_by_zero(tmp_path):
+def test_ac6_zero_recipients_is_skipped_with_a_warning(tmp_path):
+    """AC6, as refined by the supervisor's decision at Checkpoint 1.
+
+    The original wording accepted either a hard failure or a safe render. At CP1
+    I chose skip-and-continue over the agent's proposed hard failure, on the
+    condition that the skip is announced: a report that quietly describes fewer
+    campaigns than the file contains is how a wrong number reaches a client
+    deck. Tightened here before the agent wrote any code, and without the agent
+    ever seeing this file.
+    """
     path = write_csv(tmp_path, GOOD_ROW, "c2,Beta,2026-01-08,0,0,0,0,0.00")
     code, out, err = run_cli(path)
     assert "ZeroDivisionError" not in err
     assert "Traceback" not in err
-    # Either reject it or render it safely, but say something either way.
-    assert err.strip() or "Beta" in out
+    assert code == 0, f"the run should still succeed:\n{err}"
+    assert "Alpha" in out, "the valid campaign should still be reported"
+    body = "\n".join(campaign_rows(out))
+    assert "Beta" not in body, "the 0-recipient row must be left out of the table"
+    assert err.strip(), "the skip must be announced on stderr, not silent"
+    assert "Beta" in err or "c2" in err, f"the warning should name the row:\n{err}"
 
 
 def test_ac7_header_only_csv_says_no_campaigns(tmp_path):

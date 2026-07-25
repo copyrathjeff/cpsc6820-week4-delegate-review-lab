@@ -54,11 +54,25 @@ Binary and observable. AC2-AC9 each additionally require that stderr contain no
 | AC3 | CSV missing a required column: message names the missing column(s). |
 | AC4 | Non-numeric value in a numeric column: message names the row number and the column. |
 | AC5 | Negative value in a numeric column: rejected, row and column named. |
-| AC6 | A campaign with `recipients = 0`: handled with a clear message, never a `ZeroDivisionError`. |
+| AC6 | A campaign with `recipients = 0`: skipped, the rest of the file still reported, and the skip announced on stderr. Never a `ZeroDivisionError`. *(Tightened at CP1, see note.)* |
 | AC7 | Header-only CSV: clear "no campaigns" message, exit code non-zero. |
 | AC8 | `--top 3` prints exactly 3 campaign rows: the 3 highest revenue-per-recipient, in descending order. |
 | AC9 | `--top 0` and `--top -1` are rejected as invalid input. |
 | AC10 | All 5 baseline tests still pass, and the module imports nothing outside the standard library. |
+
+**Note on AC6.** As first written, AC6 accepted either a hard failure or a safe
+render. At Checkpoint 1 I chose skip-and-continue over the agent's proposed hard
+failure, and tightened AC6 to require that the skip be announced on stderr. The
+amendment was made before the agent wrote any code and while the acceptance
+tests were still outside its working tree.
+
+This is worth distinguishing carefully, because it looks superficially like the
+failure mode it is the opposite of. Editing a test to match a decision the human
+made at a checkpoint is specification refinement, which is what checkpoints are
+for. Editing a test to match code the agent had already written would be test
+gaming. The ordering is what separates them, and the git history records the
+ordering: this amendment is commit 3, and the agent's first line of code lands
+after it.
 
 ## 3. My own test cases
 
