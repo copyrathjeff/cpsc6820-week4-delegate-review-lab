@@ -1,7 +1,10 @@
 # CPSC 6820 Literature Component
 
-**Assignment 4.1, additional requirement.** Jeff Branyon. Summer 2026.
-Companion to the Week 4 Delegate & Review Lab.
+**The +25 graduate requirement for Assignment 4.1.** Jeff Branyon. Summer 2026.
+
+Included as the final part of this document rather than as a separate upload,
+because only one Canvas item was open for Week 4. Everything before this page is
+Assignment 4.1. This part is self-contained and can be graded on its own.
 
 ## Paper
 
