@@ -70,23 +70,32 @@ assigns ownership. `Co-Authored-By` is the machine-readable git-standard form, s
 the attribution is greppable by tooling that does not know about the other two.
 
 The module says consistency is what makes attribution useful for later audit, so
-the test is mechanical: `git log --grep="Assisted-by"` returns exactly the commits
-containing agent-authored code, and nothing else.
+the test should be mechanical. **Anchor the pattern to the trailer line:**
 
 ```
-$ git log --grep='Assisted-by' --oneline
+$ git log --grep='^Assisted-by:' --oneline
 7f6408a Merge branch 'feature/validation-and-top-n'
 50959d0 Add --top N ranking by revenue per recipient
 0032474 Validate CSV input and fail with actionable messages
-
-$ git log --grep='Assisted-by' --invert-grep --oneline   # human-only commits
-9a05ddb Consolidate duplicate golden output fixture
-b5ab724 Record CP3 review, correct AC8, add review and reflection
-f85d623 Record CP2 review: verified claims, five rulings
-a8dc4cd Record CP1 plan review; refine AC6 to skip-and-warn
-ed6ad9f Define delegated task, acceptance criteria, and checkpoints
-93335ad Add campaign_report CLI baseline
 ```
+
+Exactly the three commits carrying agent-authored code: the two agent commits and
+the merge that brought them to `main`. Every other commit in the repository is
+human-authored and carries no trailers. That set is final, since no further agent
+work followed the merge.
+
+**Why anchored, which I learned by getting it wrong.** I first documented this as
+`git log --grep='Assisted-by'`, unanchored, and asserted it returned "exactly the
+commits containing agent-authored code, and nothing else." Then I wrote a commit
+message that *discussed* the convention, and the unanchored pattern matched its
+prose. The audit query returned a human-only commit, and the claim in this document
+stopped reproducing about sixty seconds after I made it.
+
+It is a small bug with a real point behind it. An attribution convention is only
+as good as the query that audits it, a substring match over a whole commit message
+is not that query, and I found this only because I re-ran my own documented command
+against the pushed repository instead of trusting the output I had already pasted
+in. `^Assisted-by:` matches the trailer and not discussion of the trailer.
 
 ## Verification at the merge commit
 
