@@ -22,7 +22,7 @@ planned, edited, and ran its own tests with no human prompt per step.
 2. **Checkpoint Records.** What each gate caught, what I corrected, what I got
    wrong, and which agent claims I re-derived rather than believed.
 3. **Code Review.** Seven comments, three blocking, one beyond correctness. Every
-   defect claim carries its reproduction.
+   reproducible defect claim carries its reproduction.
 4. **Reflection.** 598 words.
 5. **Version Control Record.** Branch topology, commit structure, and attribution
    convention, generated from the repository.
@@ -36,16 +36,15 @@ planned, edited, and ran its own tests with no human prompt per step.
 ## Result in brief
 
 The agent's work landed in two reviewed commits after three gates and one round of
-requested changes. 108 tests pass at the merge commit: the 5 baseline tests
-unmodified since `93335ad`, 92 written by the agent, and 11 acceptance tests
-written by me before the agent received the task and hidden from its branch.
-Valid-run output is byte-identical to the pre-change baseline.
+requested changes. 108 tests pass at the merge commit: 5 baseline tests unmodified
+since `93335ad`, 92 written by the agent, and 11 acceptance tests of mine. Ten of
+those eleven were committed at `ed6ad9f` before the agent received the task and
+were hidden from its branch; the eleventh was added at CP3, when AC8 was split in
+two. Valid-run output is byte-identical to the pre-change baseline.
 
 The three most useful findings were mine, not the agent's. A latent
 `ZeroDivisionError` in my own baseline. An acceptance criterion (AC6) that tested
 zero *recipients* and never zero *opens*, three lines from the property that
 divides by opens. And AC8, which failed against **correct** code because it
 encoded a specification my own CP1 ruling had superseded, in the very same edit
-where I amended AC6 for exactly that reason.
-
-I built the checkpoints to catch the agent's drift. They caught mine.
+where I amended AC6 for exactly that reason. Section 2 records all three.

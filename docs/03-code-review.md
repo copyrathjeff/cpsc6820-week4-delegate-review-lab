@@ -6,10 +6,12 @@
 **Reviewer:** Jeff Branyon.
 **Verdict:** Changes requested, then approved after remediation.
 
-I reviewed the diff rather than the agent's summary of the diff, and I
-re-derived every factual claim in its self-report instead of accepting it. Where
-a comment below asserts a defect, I reproduced it first; the reproduction is
-included so the claim is checkable rather than trusted. Comments are ordered by
+I reviewed the diff rather than the agent's summary of the diff, and I re-derived
+every factual claim in its self-report instead of accepting it. Where a comment
+below asserts a defect that is reachable today, I reproduced it first, and the
+reproduction is included so the claim is checkable rather than trusted. Comment 4
+is the exception and says so: it describes a latent fault that cannot currently be
+triggered. Comments are ordered by
 what I would want fixed first, not by where they appear in the file.
 
 Two notes on calibration before the comments. First, the module warns that
@@ -69,6 +71,8 @@ the easy wrong fix, and it is the version I would have written.
 
 **Where:** `top_campaigns`.
 
+The line under review, which is not what `main` contains today:
+
 ```python
 return sorted(campaigns, key=SORT_KEYS["rpr"])[:count]
 ```
@@ -82,8 +86,8 @@ verified how much worse:
 ```python
 # Against the branch AS REVIEWED, before this comment was addressed:
 cr.SORT_KEYS['rpr'] = lambda x: x.revenue_per_recipient   # a display-only change
-# before the flip -> ['Last Chance Spring', 'Bundle + Save 20%', 'Mothers Day Gift G']
-# after the flip  -> ['Founder Story', 'New Scent Announce', 'Bestsellers Restoc']
+# before the flip -> Last Chance Spring Sale, Bundle + Save 20%, Mothers Day Gift Guide
+# after the flip  -> Founder Story, New Scent Announcement, Bestsellers Restock
 ```
 
 That snippet no longer reproduces on `main`, which is the point of the fix. Selection
@@ -145,11 +149,13 @@ division by zero.
 guard, then corrected me: once comment 1's fix makes `ratio()` return `None` for a
 zero denominator, `build_report(campaigns, top=0)` no longer divides by zero at
 all. It returns a header with no rows and a summary reading
-`0 campaigns | 0 recipients | $0.00 revenue`. I verified that rather than take it.
+`0 campaigns  |  0 recipients  |  $0.00 revenue`. I verified that rather than take it.
 `ratio(5, 0)` is `None` and `totals([]).recipients` is 0, so the correction holds.
 The guard still belongs, but it earns its place by **refusing to describe nothing**,
-not by preventing a crash. It now raises `ValueError: cannot build a report from
-zero campaigns`, and the agent deliberately chose `ValueError` over
+not by preventing a crash. There are now two guards. `top_campaigns` raises
+`ValueError: count must be 1 or more, got 0`, which is the one a `top=0` call
+actually reaches, and `build_report` raises `ValueError: cannot build a report from
+zero campaigns` for an empty list. The agent deliberately chose `ValueError` over
 `CampaignReportError` because the latter is documented as user-fixable input while
 `top=0` from a caller is a programming error. I had not specified which. That
 distinction is right and I did not ask for it.
@@ -223,7 +229,7 @@ reasoning rather than rediscovering the surprise.
 
 ## 7. Process. An already-approved file was modified
 
-**Where:** `tests/test_validation.py`, +21/-2, a file I had reviewed and committed
+**Where:** `tests/test_validation.py`, +19/-2, a file I had reviewed and committed
 at Checkpoint 2.
 
 The changes themselves are correct and I would have asked for them: regression
@@ -243,9 +249,9 @@ sometimes right; doing it quietly never is.
 Recorded because a review that only lists defects misrepresents the change.
 
 1. **It reported a bug as mine and let me check.** The `ZeroDivisionError` was in
-   my baseline. It said so, cited `git show 93335ad:campaign_report.py` as the
-   evidence, and declined to fix it because the fix needed a decision I had not
-   made. It would have been easier to quietly patch it, or to omit it. I verified
+   my baseline. It said so, cited `git show HEAD:campaign_report.py`, which on its
+   branch at that point resolved to `93335ad`, as the evidence, and declined to fix
+   it because the fix needed a decision I had not made. It would have been easier to quietly patch it, or to omit it. I verified
    the attribution before accepting it, precisely because it was the claim most
    convenient for the author.
 2. **It reported its own wrong test expectation.** One test failed initially

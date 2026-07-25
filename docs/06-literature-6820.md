@@ -18,7 +18,7 @@ In *Proceedings of the CHI Conference on Human Factors in Computing Systems*
 
 **Methodology.** Mozannar et al. ran a 60-minute observational study of 21
 programmers using GitHub Copilot in VS Code on a remote VM. Familiarity ranged
-from 11 who had never used it to 7 weekly users. Each received one of eight
+from 11 never-users to 7 weekly users. Each received one of eight
 mostly-Python tasks in a 20-minute block, delivered as an image so participants
 could not paste the prompt and had to author their own. Telemetry logged every
 show, accept, reject, and browse event, segmenting each session. Immediately
@@ -30,10 +30,10 @@ intent from telemetry, it asks developers what they were doing. Analysis covered
 deliberately no Copilot-free control: the aim was time allocation within
 AI-assisted work, not speedup.
 
-**Findings.** Verifying suggestions was the largest single activity at 22.4% of
-session time, ahead of writing new functionality at 14.1%, a task the tool newly
-introduced. Copilot-specific states
-consumed 51.5% of sessions. The transition graph shows that deferring thought on a
+**Findings.** Verifying suggestions, an activity the tool newly introduced, was the
+largest single one at 22.4% of session time, ahead of writing new functionality at
+14.1%. Copilot states
+consumed about 51% of sessions. The transition graph shows that deferring thought on a
 suggestion leads to verifying it later with probability 0.54, a pattern they name
 **verification debt**: deference postpones review rather than removing it. Most
 consequentially, counting verification that happens *after* acceptance raises mean

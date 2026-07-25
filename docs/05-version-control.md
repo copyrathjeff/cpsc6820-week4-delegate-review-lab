@@ -9,9 +9,10 @@ the repository, not transcribed.
 `feature/validation-and-top-n`, and that branch was cut from the **baseline**
 commit `93335ad` rather than from the tip of `main`. That single choice is what
 made "keep verification outside the agent's control" structural instead of
-advisory: the task definition, the acceptance criteria, and the ten acceptance
-tests were committed to `main` at `ed6ad9f`, which is not an ancestor of the
-agent's branch, so those files were never present in its working tree. It could
+advisory: the task definition, the acceptance criteria, and the ten acceptance tests
+that existed at that point were committed to `main` at `ed6ad9f`, which is not an
+ancestor of the agent's branch, so those files were never present in its working
+tree. An eleventh test was added at CP3, also on `main` only. It could
 not read them and could not edit them.
 
 The topology below shows this directly. The branch leaves history at `93335ad`,
@@ -19,8 +20,9 @@ below every docs commit, and rejoins only at the merge.
 
 ## The graph
 
-The lab itself, from the baseline through the merge. Everything after `9a05ddb` is a
-linear tail of documentation and build commits, described in the table below.
+The lab itself, from the baseline through the merge and the fixture consolidation
+that followed it. Every commit after `9a05ddb` is a linear tail of documentation and
+build commits, listed in the table below.
 
 ```
 * 9a05ddb Consolidate duplicate golden output fixture
@@ -49,7 +51,7 @@ linear tail of documentation and build commits, described in the table below.
 | `b5ab724` | Human | CP3 record, code review, reflection. AC8 corrected. |
 | `7f6408a` | Merge | `--no-ff`, so the branch topology survives in the history. |
 | `9a05ddb` | Human | Consolidates the duplicate golden fixture the isolation caused. |
-| after `9a05ddb` | Human | Documentation and build commits: this record, the submission PDFs, a fix to the audit query below, a revision of the reflection, and folding the 6820 part into the same PDF. No program code changes after the merge. |
+| after `9a05ddb` | Human | Documentation and build commits only: this record, the submission PDFs, a fix to the audit query below, a revision of the reflection, folding the 6820 part into the same PDF, and correction passes over these documents. No program code changes after the merge. |
 
 Two agent commits, one merge, and the rest human. The agent's work landed in two
 commits because I committed at each reviewed checkpoint, rather than letting one
@@ -58,8 +60,9 @@ commits pass the module's test: each has an honest one-line summary.
 
 ## Attribution convention
 
-Every commit containing agent-authored code carries three trailers, and every
-commit without it carries none:
+The two commits containing agent-authored code carry three trailers each. The merge
+that brought them to `main` carries the first two, since a merge introduces no newly
+authored code. Every other commit carries none.
 
 ```
 Assisted-by: Claude Code (claude-sonnet-5), delegated agent, Part 1 of 2
@@ -92,8 +95,8 @@ work followed the merge.
 `git log --grep='Assisted-by'`, unanchored, and asserted it returned "exactly the
 commits containing agent-authored code, and nothing else." Then I wrote a commit
 message that *discussed* the convention, and the unanchored pattern matched its
-prose. The audit query returned a human-only commit, and the claim in this document
-stopped reproducing about sixty seconds after I made it.
+prose. The audit query started returning human-only commits, two of them by the end, and
+the claim in this document stopped reproducing about sixty seconds after I made it.
 
 It is a small bug with a real point behind it. An attribution convention is only
 as good as the query that audits it, a substring match over a whole commit message

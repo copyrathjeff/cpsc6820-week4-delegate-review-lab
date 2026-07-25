@@ -11,7 +11,7 @@ loop from Part A.1. Full prompts and responses in `docs/appendix-transcript.md`.
 
 **Gate held.** The agent was told to read the code but not to create, edit, or
 delete anything, and to answer with a plan only. It complied: it read four files
-across 8 tool calls, confirmed the working tree was clean and 5/5 tests passed,
+across eight tool calls, confirmed the working tree was clean and 5/5 tests passed,
 and closed with "No files have been created, edited, or deleted." I verified
 that independently with `git status` rather than taking its word for it.
 
@@ -113,7 +113,7 @@ code, "not even the argparse wiring." It stopped. `parse_args` is untouched in
 the diff and the string `--top` does not appear anywhere on the branch.
 
 Between my gates the agent worked autonomously across 17 tool calls: edited the
-module, created a 23-function test file, ran the suite, and iterated until green
+module, created a test file of 23 functions, ran the suite, and iterated until green
 with no prompt from me between steps. That is the plan-act-observe loop, and it
 is the stretch of this exercise where I genuinely was not in the room.
 
@@ -174,7 +174,8 @@ for that protection in duplicated work. I would still make the same trade, but I
 would now expect the duplication rather than be surprised by it.
 
 I let the file stand through Part 2, where it actively guards output invariance,
-and consolidated at CP3 instead of removing a working guard mid-task.
+rather than remove a working guard mid-task. It was consolidated after the merge,
+in `9a05ddb`.
 
 ### Rulings issued at this gate
 
@@ -187,7 +188,8 @@ and consolidated at CP3 instead of removing a working guard mid-task.
 2. **Helpers stay public.** Its reasoning beat my plan: the module has no
    underscore convention, so introducing one for four functions would add a
    second convention to a 200-line file. Approved as built.
-3. **`tests/expected_report.txt` stays through Part 2**, consolidated at CP3.
+3. **`tests/expected_report.txt` stays through Part 2**, and is consolidated after
+   the merge in `9a05ddb`.
 4. **Fix the BOM handling.** It noted a UTF-8 BOM would make the tool report
    `campaign_id` as a missing column. A CSV export carrying a BOM is not
    hypothetical, and this produces a *misleading* message from code written in
@@ -198,7 +200,8 @@ and consolidated at CP3 instead of removing a working guard mid-task.
    Part 1 exists to remove, so this is in scope despite being only wording.
 
 I also audited its self-written tests for gaming before approving: 23 test
-functions, no tautological assertions, 49 assertions on actual message content.
+functions collecting 28 cases through parametrization, no tautological assertions,
+and 50 assertions of which 48 pin actual message or output content.
 One of them, `test_unexpected_errors_are_not_swallowed`, is a test that enforces
 my own Correction 1 against future edits. I did not ask for that.
 
@@ -222,8 +225,9 @@ write the review.
 ### The acceptance suite: 9 of 10, and the failure was mine
 
 I copied `tests/test_acceptance.py` and `tests/golden/` from `main` onto the branch
-for the first time and ran them. The agent's own 97 tests passed. My suite went 9
-for 10.
+for the first time and ran them. The agent's own 92 tests passed, and the branch
+suite went 97 for 97 counting my 5 baseline tests. My acceptance suite went 9 for
+10.
 
 **AC8 failed against correct code.** It demanded `--top 3` print the three
 campaigns in descending revenue-per-recipient order. The actual output selects the
@@ -288,9 +292,11 @@ no longer divides by zero at all: it returns a header with no rows and a summary
 reading `0 campaigns | 0 recipients | $0.00 revenue`. The guard therefore earns its
 place by refusing to describe nothing, not by preventing a crash.
 
-I verified this rather than take it: `ratio(5, 0)` returns `None`,
-`totals([]).recipients` is 0, and the guard raises `ValueError: cannot build a
-report from zero campaigns`. Its correction stands and my stated rationale in the
+I verified this rather than take it. `ratio(5, 0)` returns `None` and
+`totals([]).recipients` is 0. There are two guards, not one: `top_campaigns` raises
+`ValueError: count must be 1 or more, got 0`, which is the one `top=0` actually
+reaches, and `build_report` raises `ValueError: cannot build a report from zero
+campaigns` for an empty list. Its correction stands and my stated rationale in the
 review was wrong. Recorded because the two rulings interact, and a review record
 should not preserve a justification I know to be incorrect.
 

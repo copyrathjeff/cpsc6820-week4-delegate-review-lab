@@ -47,8 +47,8 @@ proportionality bound and I recorded whether the agent honored it.
 
 ## 2. Acceptance criteria
 
-Binary and observable. AC2-AC9 each additionally require that stderr contain no
-`Traceback`, because "it errors" and "it errors usefully" are different results.
+Binary and observable. AC2 through AC7 and AC9 each additionally require that
+stderr contain no `Traceback`, because "it errors" and "it errors usefully" are different results.
 
 | ID | Criterion |
 |----|-----------|
@@ -107,7 +107,8 @@ after it.
 ## 3. My own test cases
 
 Ten tests in `tests/test_acceptance.py`, written by me at this commit, covering
-AC1-AC10. Two representative ones, both required by the assignment:
+AC1-AC10. An eleventh was added at CP3 when AC8 was split, noted below. Two
+representative ones, both required by the assignment:
 
 **Test case 1 (AC4) - non-numeric value names row and column.** Feed a CSV whose
 `recipients` cell on data row 2 is the string `forty-thousand`. Require a
@@ -116,12 +117,17 @@ the column name. This is the case a naive `try/except Exception: print("bad
 CSV")` fix passes shallowly and fails on specificity, which is exactly the
 distinction I wanted to test.
 
-**Test case 2 (AC8) - `--top 3` ranks by revenue per recipient.** Against the
-committed fixture the correct answer is Last Chance Spring Sale ($0.85), Bundle
-+ Save 20% ($0.76), Mothers Day Gift Guide ($0.68), in that order. Require
-exactly three campaign rows in the table body and that order. Guards against
-both an off-by-one row count and ranking by the wrong column (raw revenue would
-give a different second and third place).
+**Test case 2 (AC8) - `--top 3` selects by revenue per recipient.** Against the
+committed fixture the correct three are Last Chance Spring Sale ($0.85), Bundle +
+Save 20% ($0.76), and Mothers Day Gift Guide ($0.68). Require exactly three
+campaign rows and that set of three. Per the CP1 ruling, display order is `--sort`
+order, which is date by default, so a companion test pins the descending-RPR order
+under `--top 3 --sort rpr`. Guards against both an off-by-one row count and ranking
+by the wrong column, since raw revenue would select a different third campaign.
+
+As first written, this test additionally demanded descending RPR order in the
+default view. That is the stale requirement described in the note on AC8 above, and
+it is the one acceptance test that failed against correct code.
 
 **Why these are black-box subprocess tests.** Every acceptance test shells out
 to `python campaign_report.py ...` and asserts on exit code, stdout, and stderr.
