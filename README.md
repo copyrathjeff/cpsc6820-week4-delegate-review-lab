@@ -36,3 +36,12 @@ This repository is the subject of the CPSC 6820 Week 4 Delegate & Review Lab.
 The `main` branch holds the human-written baseline. Agent-authored work arrives
 through feature branches and is merged only after checkpoint review. See
 `docs/` for the lab's task definition, checkpoint records, and code review.
+
+## Known issues
+
+- `parse_numeric` catches `(TypeError, ValueError)`, which covers the `int` and
+  `float` casts in `NUMERIC_COLUMNS` today. A future cast raising something else,
+  for example `Decimal` raising `decimal.InvalidOperation`, would escape that
+  handler and surface as a traceback rather than a clean message. Surfaced during
+  the CP3 review and deliberately left: fixing it means widening an exception
+  handler on speculation, and no such cast exists yet.

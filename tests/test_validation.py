@@ -363,11 +363,19 @@ def test_valid_run_is_silent_on_stderr_and_exits_zero(capsys):
 
 
 def test_valid_run_output_is_byte_for_byte_unchanged(capsys):
-    """Guards the 'do not change the output of a valid run' constraint."""
+    """Guards the 'do not change the output of a valid run' constraint.
+
+    Repointed at tests/golden/baseline_report.txt during the merge. The agent
+    wrote its own copy of this fixture at tests/expected_report.txt because the
+    supervisor's copy was deliberately hidden from its branch, so the merge
+    arrived with two byte-identical golden files. Two golden files are one more
+    than can be kept honest, so the duplicate was removed and both this test and
+    the supervisor's acceptance suite now assert against the same artifact.
+    """
     cr.main([FIXTURE])
     produced = capsys.readouterr().out
     expected_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "expected_report.txt"
+        os.path.dirname(os.path.abspath(__file__)), "golden", "baseline_report.txt"
     )
     with open(expected_path, encoding="utf-8") as handle:
         assert produced == handle.read()
