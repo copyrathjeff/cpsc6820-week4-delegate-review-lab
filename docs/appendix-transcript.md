@@ -235,3 +235,204 @@ nothing in the agent's prose is edited, including the parts where it is wrong.
 
 *Verified independently with `git status` on the supervising session: working
 tree clean, so the no-edits claim was true rather than merely asserted.*
+
+---
+
+## CP1 result and CP2 gate - Prompt
+
+> CHECKPOINT 1 RESULT: plan approved, with three corrections and rulings on all
+> five of your questions. Good plan. Asking about the summary scope instead of
+> silently picking was the right call, and keeping the baseline test file untouched
+> was a better instinct than I asked for.
+>
+> CORRECTION 1 - drop the blanket `except Exception` in main(). You flagged it
+> yourself and you were right to. Catch CampaignReportError only. A bare `except
+> Exception` satisfies the letter of "no raw tracebacks" while defeating the point
+> of it: it would convert every genuine defect, including mine, into a polite
+> one-line message and a silent exit 1. Unanticipated exceptions should crash
+> loudly with a full traceback. I would rather see a real stack trace than a
+> reassuring message that hides one.
+>
+> CORRECTION 2 - message wording. You plan to number 1-indexed data rows but write
+> them as "Row 4". That reads as file line 4 and will send someone to the wrong
+> line. Use the literal phrase "data row N".
+>
+> CORRECTION 3 - doc edits are approved but bounded. Add the --top example to the
+> module docstring usage block and to README.md's usage/sort-keys section. Nothing
+> else in README.md. Leave the existing docs/ reference alone.
+>
+> RULINGS ON YOUR QUESTIONS:
+> 1. Summary scope: recompute over the selected top-N subset. A summary that
+>    aggregates campaigns not listed in the table above it cannot be reconciled by
+>    the person reading it.
+> 2. --top validation: argparse-native, exit code 2, as you planned. A malformed
+>    flag is a usage error, not a data error.
+> 3. Unreadable path: not-found, permission-denied, is-a-directory under one
+>    OSError catch is sufficient.
+> 4. Row numbering: 1-indexed data rows, phrased per Correction 2.
+> 5. Zero recipients: OVERRIDDEN. Do not fail the run. Skip that row, report the
+>    remaining campaigns normally, and print a warning to stderr naming the skipped
+>    campaign. Exit code stays 0 for an otherwise-valid file. Reasoning, so you can
+>    apply it to edge cases I have not listed: one malformed row should not deny an
+>    analyst the other seven campaigns, but a silent skip is worse than a crash,
+>    because a report that quietly describes less than the file contains is how a
+>    wrong number reaches a client deck. Continue, and say so loudly. A file where
+>    every row is skipped should be treated as having no usable campaigns.
+>
+> ADDITIONAL HARD RULE: do not edit tests/test_campaign_report.py. Not one line. If
+> one of those 5 tests fails, that is a signal about your change, not a problem
+> with the test.
+>
+> CHECKPOINT 2 - this is your next gate. Implement PART 1 ONLY (validation and
+> error handling). Do NOT start Part 2. Do NOT implement --top at all, not even the
+> argparse wiring.
+>
+> Work autonomously within Part 1: edit campaign_report.py, create
+> tests/test_validation.py, run the tests, iterate until they pass. Do not commit
+> anything.
+>
+> Stop when Part 1 is done and its tests pass, and report:
+> 1. What you changed, file by file.
+> 2. The result of `python3 -m pytest tests/ -q`.
+> 3. Anything that surprised you or that you had to solve differently than planned.
+> 4. Anything you are unsure about.
+>
+> Be honest in item 3 and 4 including about anything you got wrong on the way. I am
+> recording this and a clean-looking report I later contradict with the diff is
+> worse for you than an accurate one.
+
+## CP2 - Agent response (verbatim, 17 tool calls)
+
+> Part 1 complete. All 33 tests pass. Report below.
+>
+> ### 1. What I changed, file by file
+>
+> **`campaign_report.py`** (+126/-10)
+>
+> - Added `CampaignReportError(Exception)` - the single "bad input the user can
+>   fix" type. Docstring states explicitly that it is never for a defect in the
+>   module.
+> - Added `NUMERIC_COLUMNS`, a tuple of `(column, cast)` pairs, replacing the five
+>   hardcoded `int(row[...])`/`float(row[...])` calls so parse-and-check happens in
+>   one loop instead of five places.
+> - Added four helpers: `warn()` (stderr, `Warning: ` prefix), `open_csv()`
+>   (`OSError` catch, distinct messages for not-found / is-a-directory /
+>   permission-denied / other), `check_columns()`, `parse_numeric()`.
+> - Rewrote the body of `load_campaigns(path)`. Signature and return type unchanged
+>   (still a plain list, deliberately not a `(campaigns, warnings)` tuple, which
+>   would have broken baseline test 1).
+> - `main()` now catches `CampaignReportError` only, prints `Error: {message}` to
+>   stderr, returns 1. No blanket `except Exception`, per Correction 1.
+> - Did **not** touch `Campaign`, `totals`, `pct`, `money`, `format_row`,
+>   `format_header`, `format_summary`, `build_report`, or `parse_args`. No `--top`
+>   code of any kind, not even argparse wiring.
+>
+> **`tests/test_validation.py`** (new, 28 tests) - grouped by the six error
+> classes, plus an exit-code/stderr contract block and two valid-run guards.
+>
+> **`tests/expected_report.txt`** (new, 1136 bytes) - **this file was not in my
+> approved plan.** It is the golden copy of the valid-run output, captured from the
+> unmodified script *before* I made any edit, and it backs one test asserting
+> byte-for-byte identical output. Flagging it because you approved a plan that did
+> not mention it. Say the word and I will delete it and the test that uses it.
+>
+> **`tests/test_campaign_report.py`** - not touched. `git diff` confirms zero
+> changes; all 5 pass unmodified.
+>
+> Error messages produced (verified through the real CLI, not just in-process):
+>
+> ```
+> Error: CSV file not found: '.../nope.csv'
+> Error: '.../a_dir' is a directory, not a CSV file
+> Error: permission denied reading '.../locked.csv'
+> Error: '.../empty.csv' is empty: no header row found
+> Error: '.../header_only.csv' has no data rows: only a header was found
+> Error: '.../missing_cols.csv' is missing required column(s): revenue. Expected: campaign_id, name, ...
+> Error: data row 1: column 'clicks' has a non-numeric value 'oops'
+> Error: data row 1: column 'revenue' is negative (-90.0); expected zero or more
+> Warning: data row 2: skipping campaign 'c2' (Dead Segment) because it has 0 recipients, so no rate metric can be computed for it.
+> ```
+>
+> Zero-recipient row: skipped, warned, exit **0**, other campaigns reported.
+> All-rows-skipped: warns per row, then errors with `has no usable campaigns: all 1
+> data row(s) were skipped`, exit 1.
+>
+> ### 2. `python3 -m pytest tests/ -q`
+>
+> ```
+> .................................                                        [100%]
+> 33 passed in 0.03s
+> ```
+>
+> 5 baseline + 28 new. Separately verified the output constraint by capturing all
+> six valid invocations (default plus each of the five `--sort` keys) before
+> editing and diffing after: **byte-identical, stderr empty, exit 0** in every
+> case.
+>
+> ### 3. Surprises and things I did differently than planned
+>
+> 1. **I found a pre-existing crash I did not fix, and it is reachable with fully
+>    valid input.** A file whose campaigns sum to zero opens or zero orders (e.g.
+>    one row: `recipients=1000, opens=0, clicks=0, orders=0, revenue=0.00`) passes
+>    every check I added, then dies in `format_summary` with a raw
+>    `ZeroDivisionError` on `click_to_open_rate` (and `average_order_value` would do
+>    the same). I confirmed it pre-exists by running `git show
+>    HEAD:campaign_report.py` against the same file: identical traceback. So I did
+>    not introduce it, but it does mean Part 1's "no raw tracebacks" goal is not
+>    fully met. I deliberately left it because fixing it requires a display decision
+>    you have not made (print `n/a`, or hard-error), and you told me to stay inside
+>    Part 1. See item 4.
+> 2. **Negative-value message shows the parsed number, not the raw text.** My plan
+>    said `is negative (-12.50)` using the original cell text; the code prints
+>    `(-90.0)` for a cell reading `-90.00`. Row and column are still named, so the
+>    analyst can still locate it, but the value is normalized rather than quoted
+>    verbatim.
+> 3. **Helper functions are public, not underscore-prefixed as planned.** I wrote
+>    `warn`, `open_csv`, `check_columns`, `parse_numeric` instead of
+>    `_parse_numeric_field` etc., because every existing function in the module is
+>    public and adding a second naming convention to a 200-line script felt worse.
+>    This is still a deviation from what you approved, and it does grow the
+>    module's apparent API surface. Trivial to rename.
+> 4. **`int()` rejects decimals, so `41250.5` in `recipients` reports as
+>    "non-numeric".** That acceptance behavior is inherited from the baseline (which
+>    also used `int()`), and I kept it so valid runs do not change. But my message
+>    wording calls a decimal "non-numeric", which is not quite true.
+> 5. **A truncated row reports as a value problem, not a structural one.**
+>    `csv.DictReader` fills missing trailing fields with `None`, which my
+>    `TypeError` catch turns into `data row 1: column 'opens' has a non-numeric
+>    value (empty)`. Correct row and column, but it describes a short row as a bad
+>    cell.
+> 6. **I did not make the `--top` doc edits** you approved in Correction 3. They
+>    document a flag that does not exist yet, so I held them for Part 2. Flagging in
+>    case you wanted them landed now.
+>
+> ### 4. What I am unsure about
+>
+> 1. **The `ZeroDivisionError` above - needs your ruling.** Options: (a) display
+>    `n/a` for CTOR/AOV when the denominator is zero, which keeps the analyst's
+>    report per your Ruling 5 reasoning but invents a display convention you have
+>    not approved and touches `format_summary`; (b) raise `CampaignReportError` with
+>    a clear message, which is consistent with the rest of Part 1 but denies a
+>    report over data that is arguably legitimate; (c) leave it. I lean (a), one
+>    line, but it is your call, and I did not want to silently pick a formatting
+>    convention after you specifically praised asking rather than assuming.
+> 2. **Keep or drop `tests/expected_report.txt`?** It is the strongest guard on "do
+>    not change the output of a valid run" and will keep guarding it through Part 2,
+>    but it is an unplanned file and a golden file is a maintenance object.
+> 3. **Helper naming** (item 3.3) - public or underscore-private?
+> 4. **A UTF-8 BOM in the export would report `campaign_id` as a missing column**
+>    rather than naming the BOM. The baseline would `KeyError` on the same file, so
+>    this is still an improvement, and switching to `encoding="utf-8-sig"` would fix
+>    it properly. I did not change the read encoding because that alters the parse
+>    path and was not in scope.
+> 5. **Message-wording fixes for items 3.4 and 3.5** are cheap if you want them,
+>    but both would make messages longer, and I did not want to churn wording you
+>    already corrected once.
+>
+> Nothing committed. Working tree holds one modified file and two new files, all on
+> `feature/validation-and-top-n`.
+
+*Supervisor verification of this report is tabulated in
+`docs/02-checkpoint-records.md`, Checkpoint 2. All four checkable claims held,
+including the claim that assigned the `ZeroDivisionError` to me rather than to
+itself.*
