@@ -80,10 +80,22 @@ DRY-versus-safety tradeoff. It is worse than that framing suggests, and I
 verified how much worse:
 
 ```python
+# Against the branch AS REVIEWED, before this comment was addressed:
 cr.SORT_KEYS['rpr'] = lambda x: x.revenue_per_recipient   # a display-only change
-# as shipped -> ['Last Chance Spring', 'Bundle + Save 20%', 'Mothers Day Gift G']
-# after flip -> ['Founder Story', 'New Scent Announce', 'Bestsellers Restoc']
+# before the flip -> ['Last Chance Spring', 'Bundle + Save 20%', 'Mothers Day Gift G']
+# after the flip  -> ['Founder Story', 'New Scent Announce', 'Bestsellers Restoc']
 ```
+
+That snippet no longer reproduces on `main`, which is the point of the fix. Selection
+now reads `revenue_per_recipient` directly, so flipping the display constant leaves
+`--top` unchanged.
+
+It is also not recoverable from the history, and that is worth stating rather than
+leaving for someone to discover. The coupled version was never committed. I reviewed
+the working tree and requested the fix before Part 2 was committed, so `50959d0`
+already contains the corrected `top_campaigns`. Committing only at reviewed seams
+keeps the history clean and costs you the ability to diff against the rejected state.
+The reproduction above is the record of it.
 
 Someone changing a sort direction for display reasons, with no reason to think
 they are touching `--top`, silently inverts the feature. `--top 3` then returns

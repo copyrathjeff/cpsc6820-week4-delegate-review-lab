@@ -19,6 +19,9 @@ below every docs commit, and rejoins only at the merge.
 
 ## The graph
 
+The lab itself, from the baseline through the merge. Everything after `9a05ddb` is a
+linear tail of documentation and build commits, described in the table below.
+
 ```
 * 9a05ddb Consolidate duplicate golden output fixture
 *   7f6408a Merge branch 'feature/validation-and-top-n'
@@ -38,19 +41,20 @@ below every docs commit, and rejoins only at the merge.
 | Commit | Author | Purpose |
 |---|---|---|
 | `93335ad` | Human | Baseline program. 198 lines, 5 tests. The thing being delegated against. |
-| `ed6ad9f` | Human | Task, AC1-AC10, checkpoints, 10 held-out acceptance tests. Committed **before** the agent was given any instruction, so the timestamp is the evidence that the checkpoints were designed in advance. |
+| `ed6ad9f` | Human | Task, AC1-AC10, checkpoints, and the held-out acceptance tests. Committed **before** the agent was given any instruction, so the timestamp is the evidence that the checkpoints were designed in advance. |
 | `a8dc4cd` | Human | CP1 record. Three corrections, five rulings, AC6 tightened after I overrode the agent's plan. |
 | `0032474` | **Agent**, reviewed | Part 1: input validation with actionable errors. Committed by me at the CP2 seam, after review. |
-| `f85d623` | Human | CP2 record. Four self-reported claims independently verified; five rulings. |
+| `f85d623` | Human | CP2 record. Four self-reported claims independently verified, five rulings issued. |
 | `50959d0` | **Agent**, reviewed | Part 2: `--top N`, plus the `n/a` fix that landing it safely required. |
 | `b5ab724` | Human | CP3 record, code review, reflection. AC8 corrected. |
 | `7f6408a` | Merge | `--no-ff`, so the branch topology survives in the history. |
 | `9a05ddb` | Human | Consolidates the duplicate golden fixture the isolation caused. |
+| after `9a05ddb` | Human | Documentation and build commits: this record, the submission PDFs, a fix to the audit query below, a revision of the reflection, and folding the 6820 part into the same PDF. No program code changes after the merge. |
 
-Two agent commits, five human commits, one merge. The agent's work landed in two
-commits because I committed at each reviewed checkpoint rather than letting a
-single large diff accumulate and then rewriting history to look tidy afterward.
-Both agent commits pass the module's test: each has an honest one-line summary.
+Two agent commits, one merge, and the rest human. The agent's work landed in two
+commits because I committed at each reviewed checkpoint, rather than letting one
+large diff accumulate and then rewriting history to look tidy afterward. Both agent
+commits pass the module's test: each has an honest one-line summary.
 
 ## Attribution convention
 
