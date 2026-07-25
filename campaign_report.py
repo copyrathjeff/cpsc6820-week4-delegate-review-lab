@@ -29,6 +29,25 @@ EXPECTED_COLUMNS = (
     "revenue",
 )
 
+# The numeric columns and the type each is read as. Order decides which
+# problem is reported first when a single row has more than one.
+NUMERIC_COLUMNS = (
+    ("recipients", int),
+    ("opens", int),
+    ("clicks", int),
+    ("orders", int),
+    ("revenue", float),
+)
+
+
+class CampaignReportError(Exception):
+    """A problem with the input that the user can act on.
+
+    Raised for bad input only, never for a defect in this module. main()
+    turns it into a one-line stderr message and a non-zero exit code. Any
+    other exception is a bug and is deliberately left to raise a traceback.
+    """
+
 
 @dataclass
 class Campaign:
@@ -77,24 +96,113 @@ SORT_KEYS = {
 }
 
 
+def warn(message: str) -> None:
+    """Write a non-fatal warning to stderr.
+
+    Used when a row is dropped. A skipped row has to be announced: a report
+    that quietly covers less than the file contains is how a wrong number
+    reaches a client deck.
+    """
+    print(f"Warning: {message}", file=sys.stderr)
+
+
+def open_csv(path):
+    """Open *path* for reading, or raise CampaignReportError explaining why not."""
+    try:
+        return open(path, newline="", encoding="utf-8")
+    except FileNotFoundError:
+        raise CampaignReportError(f"CSV file not found: {path!r}") from None
+    except IsADirectoryError:
+        raise CampaignReportError(
+            f"{path!r} is a directory, not a CSV file"
+        ) from None
+    except PermissionError:
+        raise CampaignReportError(
+            f"permission denied reading {path!r}"
+        ) from None
+    except OSError as exc:
+        raise CampaignReportError(
+            f"could not read {path!r}: {exc.strerror or exc}"
+        ) from None
+
+
+def check_columns(fieldnames, path) -> None:
+    """Verify the header carries every expected column."""
+    if not fieldnames:
+        raise CampaignReportError(f"{path!r} is empty: no header row found")
+    present = set(fieldnames)
+    missing = [name for name in EXPECTED_COLUMNS if name not in present]
+    if missing:
+        raise CampaignReportError(
+            f"{path!r} is missing required column(s): {', '.join(missing)}. "
+            f"Expected: {', '.join(EXPECTED_COLUMNS)}"
+        )
+
+
+def parse_numeric(raw, column, row_number, cast):
+    """Read one numeric cell, or raise CampaignReportError naming row and column."""
+    try:
+        value = cast(raw)
+    except (TypeError, ValueError):
+        shown = "(empty)" if raw is None else repr(raw)
+        raise CampaignReportError(
+            f"data row {row_number}: column {column!r} has a non-numeric "
+            f"value {shown}"
+        ) from None
+    if value < 0:
+        raise CampaignReportError(
+            f"data row {row_number}: column {column!r} is negative "
+            f"({value}); expected zero or more"
+        )
+    return value
+
+
 def load_campaigns(path):
-    """Read the CSV at *path* and return a list of Campaign records."""
+    """Read the CSV at *path* and return a list of Campaign records.
+
+    Raises CampaignReportError, with the offending data row and column named
+    where that applies, for an unreadable file, a missing column, a
+    non-numeric or negative value, or a file with no usable campaigns. Rows
+    reporting zero recipients are skipped with a warning on stderr rather
+    than failing the run, since no rate metric can be computed for them.
+    """
     campaigns = []
-    with open(path, newline="", encoding="utf-8") as handle:
+    rows_seen = 0
+    skipped = 0
+    with open_csv(path) as handle:
         reader = csv.DictReader(handle)
-        for row in reader:
+        check_columns(reader.fieldnames, path)
+        for row_number, row in enumerate(reader, start=1):
+            rows_seen += 1
+            values = {
+                column: parse_numeric(row[column], column, row_number, cast)
+                for column, cast in NUMERIC_COLUMNS
+            }
+            if values["recipients"] == 0:
+                skipped += 1
+                warn(
+                    f"data row {row_number}: skipping campaign "
+                    f"{row['campaign_id']!r} ({row['name']}) because it has "
+                    f"0 recipients, so no rate metric can be computed for it."
+                )
+                continue
             campaigns.append(
                 Campaign(
                     campaign_id=row["campaign_id"],
                     name=row["name"],
                     send_date=row["send_date"],
-                    recipients=int(row["recipients"]),
-                    opens=int(row["opens"]),
-                    clicks=int(row["clicks"]),
-                    orders=int(row["orders"]),
-                    revenue=float(row["revenue"]),
+                    **values,
                 )
             )
+    if not campaigns:
+        if rows_seen == 0:
+            raise CampaignReportError(
+                f"{path!r} has no data rows: only a header was found"
+            )
+        raise CampaignReportError(
+            f"{path!r} has no usable campaigns: all {skipped} data row(s) "
+            f"were skipped for having 0 recipients"
+        )
     return campaigns
 
 
@@ -187,9 +295,17 @@ def parse_args(argv=None):
 
 
 def main(argv=None) -> int:
-    """Entry point. Returns a process exit code."""
+    """Entry point. Returns a process exit code.
+
+    Only CampaignReportError is caught. Any other exception is a defect in
+    this tool, and a traceback is the honest thing to show for it.
+    """
     args = parse_args(argv)
-    campaigns = load_campaigns(args.csv_path)
+    try:
+        campaigns = load_campaigns(args.csv_path)
+    except CampaignReportError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
     print(build_report(campaigns, args.sort))
     return 0
 
