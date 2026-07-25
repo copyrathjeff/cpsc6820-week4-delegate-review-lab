@@ -34,8 +34,6 @@ planned, edited, and ran its own tests with no human prompt per step.
    Mozannar et al. (CHI 2024). Included here as a labeled part rather than a separate
    file, since only one Canvas item was available. It is self-contained and can be
    graded on its own.
-8. **AI Use Disclosure.** What AI did in this lab and in this report, and which
-   decisions were mine. Placed at the end as the assignment directs.
 
 ## Result in brief
 
