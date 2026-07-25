@@ -9,9 +9,12 @@ tests that ship with it.
 - Course: CPSC 6820, Week 4 Assignment 4.1
 - Baseline commit: `93335ad` (`campaign_report.py`, 198 lines, 5 tests passing)
 - Agent branch: `feature/validation-and-top-n`
-- Setup: agentic. Claude Code (CLI agent, Opus) in a delegated sub-agent session
-  with file read/write and shell access, so it could edit code and run its own
-  tests between steps without a human prompt per step.
+- Setup: agentic, not simulated. Claude Code (terminal/CLI agent) with a
+  supervising session on `claude-opus-5` driving a **delegated sub-agent** on
+  `claude-sonnet-5` as the worker. The sub-agent held file read/write and shell
+  access and kept its own context across all three checkpoints, so each gate
+  resumed the same worker rather than briefing a fresh one. Between gates it
+  planned, edited, and ran its own tests with no human prompt per step.
 
 ---
 
@@ -56,9 +59,36 @@ Binary and observable. AC2-AC9 each additionally require that stderr contain no
 | AC5 | Negative value in a numeric column: rejected, row and column named. |
 | AC6 | A campaign with `recipients = 0`: skipped, the rest of the file still reported, and the skip announced on stderr. Never a `ZeroDivisionError`. *(Tightened at CP1, see note.)* |
 | AC7 | Header-only CSV: clear "no campaigns" message, exit code non-zero. |
-| AC8 | `--top 3` prints exactly 3 campaign rows: the 3 highest revenue-per-recipient, in descending order. |
+| AC8 | `--top 3` prints exactly 3 campaign rows: the 3 highest revenue-per-recipient, displayed in `--sort` order. *(Corrected at CP3, see note. Originally demanded descending RPR order, which my own CP1 ruling superseded.)* |
 | AC9 | `--top 0` and `--top -1` are rejected as invalid input. |
 | AC10 | All 5 baseline tests still pass, and the module imports nothing outside the standard library. |
+
+**Note on AC8, and why it is a harder call than AC6.** AC8 originally required
+`--top 3` to print the three campaigns in descending revenue-per-recipient order.
+It was the one acceptance test that failed against the agent's branch, and the
+failure was mine: at CP1 I ruled that `--top` selects while `--sort` orders, which
+contradicts AC8 as written. The agent implemented the ruling correctly. I amended
+AC6 for precisely this reason in the same commit, `a8dc4cd`, and never noticed AC8
+needed identical treatment.
+
+The AC6 amendment was easy to justify because it happened before any code existed.
+This one is not, and I want to be explicit about that rather than quietly fix it.
+I amended AC8 **after** seeing the implementation, which is the exact direction
+test gaming runs in, and "the code disagreed with my test so I changed my test" is
+the sentence a grader should be suspicious of.
+
+What makes it refinement rather than gaming is that the superseding decision is
+timestamped, in writing, before the code: commit `a8dc4cd` records the
+`--top` filters / `--sort` orders ruling, and `50959d0` is where `--top` first
+exists. The amendment conforms the test to a documented earlier decision, not to
+whatever the agent happened to produce. Anyone can verify that ordering with
+`git log`.
+
+The honest lesson is not that the amendment was fine. It is that my process had a
+hole: I refined one acceptance criterion at a checkpoint and failed to re-read the
+other nine against the same ruling. Had `--top` been genuinely wrong in the same
+way AC8 was stale, I would have had a failing test I was already primed to explain
+away.
 
 **Note on AC6.** As first written, AC6 accepted either a hard failure or a safe
 render. At Checkpoint 1 I chose skip-and-continue over the agent's proposed hard

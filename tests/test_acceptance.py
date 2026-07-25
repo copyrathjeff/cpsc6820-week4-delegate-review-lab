@@ -144,15 +144,41 @@ def test_ac7_header_only_csv_says_no_campaigns(tmp_path):
 # --- AC8-AC9: --top N ------------------------------------------------------
 
 
-def test_ac8_top_3_ranks_by_revenue_per_recipient():
-    """Test case 2. Ranking by raw revenue would reorder 2nd and 3rd place."""
+TOP_3_BY_RPR = ("Last Chance Spring Sale", "Bundle + Save 20%", "Mothers Day Gift Guide")
+TOP_3_IN_DATE_ORDER = ["Bundle + Save 20%", "Last Chance Spring Sale", "Mothers Day Gift Guide"]
+
+
+def test_ac8_top_3_selects_by_revenue_per_recipient():
+    """Test case 2, corrected at CP3. THE ORIGINAL VERSION OF THIS TEST WAS WRONG.
+
+    As first written it demanded the three rows appear in descending RPR order.
+    That contradicted my own CP1 ruling that --top selects while --sort orders,
+    recorded in commit a8dc4cd, before any --top code existed. The agent
+    implemented the ruling; this test still encoded the superseded spec, so it
+    failed against correct code. I amended AC6 for exactly this reason in that
+    same commit and did not notice AC8 needed the same treatment.
+
+    Corrected to assert what the ruling actually requires: the right three
+    campaigns get selected by RPR, then displayed in --sort order (date by
+    default). Ranking by raw revenue would still select a different third
+    campaign, so the selection assertion keeps its teeth.
+    """
     code, out, err = run_cli(FIXTURE, "--top", "3")
     assert code == 0, err
     rows = campaign_rows(out)
     assert len(rows) == 3, f"expected exactly 3 rows, got {len(rows)}:\n{out}"
-    assert rows[0].startswith("Last Chance Spring Sale")
-    assert rows[1].startswith("Bundle + Save 20%")
-    assert rows[2].startswith("Mothers Day Gift Guide")
+
+    names = [r.split("  ")[0].strip() for r in rows]
+    assert set(names) == set(TOP_3_BY_RPR), f"wrong campaigns selected: {names}"
+    assert names == TOP_3_IN_DATE_ORDER, f"default order should be by date: {names}"
+
+
+def test_ac8b_top_composes_with_sort_rpr():
+    """The descending-RPR order the original AC8 demanded is reachable, via --sort."""
+    code, out, err = run_cli(FIXTURE, "--top", "3", "--sort", "rpr")
+    assert code == 0, err
+    names = [r.split("  ")[0].strip() for r in campaign_rows(out)]
+    assert names == list(TOP_3_BY_RPR), f"expected descending RPR order: {names}"
 
 
 def test_ac9_invalid_top_values_are_rejected():

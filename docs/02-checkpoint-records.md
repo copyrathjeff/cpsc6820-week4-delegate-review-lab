@@ -210,4 +210,107 @@ two gates.
 
 ## Checkpoint 3 - Full diff review before merge
 
-*(recorded below after the run)*
+**Gate held, and this is the gate that earned its place.** Outcome: **changes
+requested**, six items, then approved after remediation. Nothing reached `main`
+until the second pass.
+
+Procedure, in this order deliberately: read the diff line by line *before* reading
+the agent's summary of it; run my held-out acceptance suite; reproduce every defect
+claim rather than accept it; hunt for defects the agent did not disclose; then
+write the review.
+
+### The acceptance suite: 9 of 10, and the failure was mine
+
+I copied `tests/test_acceptance.py` and `tests/golden/` from `main` onto the branch
+for the first time and ran them. The agent's own 97 tests passed. My suite went 9
+for 10.
+
+**AC8 failed against correct code.** It demanded `--top 3` print the three
+campaigns in descending revenue-per-recipient order. The actual output selects the
+correct three (RPR 0.85, 0.76, 0.68 of eight) and displays them in date order.
+Which is exactly what I ruled at CP1: `--top` selects, `--sort` orders.
+
+So the agent implemented my ruling, and my acceptance test still encoded the
+specification that ruling replaced. I amended AC6 for precisely this reason in
+commit `a8dc4cd`, and in the same edit failed to re-read the other nine criteria
+against the ruling I had just issued.
+
+This is the most useful thing the lab produced, and not because the tests caught
+the agent. It is that the isolation worked in an unplanned direction. Holding the
+tests out of the agent's reach forced a real confrontation between my written spec
+and my later verbal ruling, and the confrontation exposed the drift. Had the
+acceptance tests been visible, the agent would most likely have reconciled the
+contradiction silently by satisfying whichever it read last, and I would never
+have learned I had contradicted myself. See `docs/01-task-definition.md` for why
+amending AC8 after seeing the code is defensible here, and where that line is
+genuinely thin.
+
+### Verifying the disclosed defect, and reversing my CP2 ruling
+
+The agent reported that `--top` widened the reachability of the zero-denominator
+crash I ruled out of scope at CP2. I reproduced it on a two-row file whose
+highest-RPR campaign has revenue but no orders, an attribution-lag artifact rather
+than a contrived input:
+
+```
+python3 campaign_report.py no_orders.csv           -> clean report, AOV $100.00, exit 0
+python3 campaign_report.py no_orders.csv --top 1   -> ZeroDivisionError, exit 1
+```
+
+**I reversed my CP2 ruling.** It was defensible when I made it and wrong by CP3,
+because the facts moved underneath it: the division is old, but which inputs reach
+it is new, and this change is what made them reach it. A change that turns a
+working command into a traceback on the same file has introduced a regression
+regardless of who authored the arithmetic. "Pre-existing" describes a line of code;
+it does not describe the behavior, and the behavior is what regressed. I unfenced
+`format_summary` for the fix, since that fence existed to prevent gratuitous
+rewriting, not to compel shipping a crash.
+
+### What I found that the agent did not disclose
+
+`build_report(campaigns, top=0)` raised `ZeroDivisionError`. `positive_int` guards
+the CLI, but `top_campaigns` and `build_report` are public and an empty selection
+reached `totals()`. I found it by deliberately looking past the agent's list of its
+own defects rather than through it, which became the practical lesson of this gate:
+a candid self-report is more useful than a silent one and also more seductive,
+because a thorough-sounding enumeration invites you to treat it as complete.
+
+I also reproduced the agent's `SORT_KEYS` coupling concern and found it worse than
+described. Reassigning `SORT_KEYS["rpr"]` to ascending, a plausible display-only
+edit, silently made `--top 3` return the three *worst* campaigns.
+
+### The agent corrected my reasoning, and was right
+
+On remediation it pushed back on one of my six items. I had justified the
+empty-selection guard as preventing a division by zero. It pointed out that once
+`ratio()` returns `None` for a zero denominator, `build_report(campaigns, top=0)`
+no longer divides by zero at all: it returns a header with no rows and a summary
+reading `0 campaigns | 0 recipients | $0.00 revenue`. The guard therefore earns its
+place by refusing to describe nothing, not by preventing a crash.
+
+I verified this rather than take it: `ratio(5, 0)` returns `None`,
+`totals([]).recipients` is 0, and the guard raises `ValueError: cannot build a
+report from zero campaigns`. Its correction stands and my stated rationale in the
+review was wrong. Recorded because the two rulings interact, and a review record
+should not preserve a justification I know to be incorrect.
+
+It also declined to route that guard through `CampaignReportError`, reserving that
+type for user-fixable input and using `ValueError` for a programming error. I had
+not specified which. That is the right distinction and I did not ask for it.
+
+### Remediation verified
+
+97 tests pass (5 baseline untouched, 29 validation, 40 `--top`, 23 formatting).
+`git diff 93335ad -- tests/test_campaign_report.py` is still empty. Valid-run
+output is byte-identical to the baseline golden file with stderr empty. The
+formerly-crashing invocation now exits 0 and degrades only the genuinely undefined
+metric, printing `AOV n/a` while `CTOR`, `RPR`, and `CVR 0.0%` stay real numbers,
+since zero orders over a real denominator is a defined rate of zero rather than an
+undefined one.
+
+The agent also disclosed that two of its own tests failed during remediation and
+that it changed the tests rather than the code, because the pluralization fix I
+requested is what made `"1 campaigns"` wrong. Correct call, disclosed without being
+asked.
+
+**Merged** with `--no-ff` after this pass. Full review in `docs/03-code-review.md`.

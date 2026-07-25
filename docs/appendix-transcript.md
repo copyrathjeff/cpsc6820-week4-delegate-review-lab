@@ -436,3 +436,108 @@ tree clean, so the no-edits claim was true rather than merely asserted.*
 `docs/02-checkpoint-records.md`, Checkpoint 2. All four checkable claims held,
 including the claim that assigned the `ZeroDivisionError` to me rather than to
 itself.*
+
+---
+
+## CP3 - Review with changes requested (prompt, abridged to the requests)
+
+The full review prose is in `docs/03-code-review.md`. The six requests as issued:
+
+> CHECKPOINT 3 REVIEW: CHANGES REQUESTED. Not a rejection. [...] My own held-out
+> acceptance suite, which you have never seen and which was committed before you
+> got the task, passes 9 of 10 against your code. The one failure, AC8, is MY bug,
+> not yours. AC8 demanded --top 3 print the three campaigns in descending rpr
+> order. At CP1 I ruled that --top selects and --sort orders. You implemented my
+> ruling exactly. I never propagated that ruling into AC8, in the same edit where I
+> amended AC6. Your output is correct; my acceptance test was stale.
+>
+> I ALSO FOUND ONE YOU MISSED: build_report(campaigns, top=0) raises
+> ZeroDivisionError. positive_int guards the CLI, but top_campaigns and
+> build_report are public and unguarded [...] Validation living only at the CLI
+> boundary is fine until someone imports the module, which is exactly what your
+> own tests do.
+>
+> I also reproduced your SORT_KEYS concern concretely, and it is worse than you
+> described. Reassigning SORT_KEYS["rpr"] to ascending, a plausible display-only
+> change, makes top_campaigns return the three WORST campaigns [...] Silently.
+>
+> REQUIRED CHANGES. I am explicitly unfencing format_summary and the formatting
+> layer for this round. That fence existed to prevent gratuitous rewriting, not to
+> force you to ship a crash.
+>
+> 1. Fix the zero-denominator crash, properly. Render "n/a" [...] Your CP2 option
+>    (a), which I wrongly declined. My reasoning has changed because the facts
+>    changed: this is no longer a pre-existing defect on unrelated input, it is a
+>    defect your feature makes reachable on input that worked before.
+> 2. Decouple selection from display [...] Add a test that would fail if someone
+>    flipped the display lambda.
+> 3. Guard the empty/zero selection path [...]
+> 4. NUMERIC_KINDS[cast] -> use a .get fallback. An error reporter that raises
+>    KeyError while reporting an error is the worst possible failure site.
+> 5. Drop the TypeError from positive_int.
+> 6. Fix "1 campaigns".
+>
+> Do NOT do anything else. [...] If byte-identity breaks for the 8-campaign
+> fixture, stop and tell me rather than adjusting anything to compensate.
+>
+> [...] Also tell me if any of my six requests was wrong.
+
+## CP3 - Agent remediation response (verbatim excerpts)
+
+> All six changes are in. 97 tests pass, byte-identity holds.
+
+On the guard, item 3:
+
+> I chose **raising `ValueError`** over returning an empty report, in both
+> `top_campaigns` (`count < 1`) and `build_report` (empty `campaigns`).
+> `ValueError`, not `CampaignReportError`, deliberately: `CampaignReportError` is
+> documented as user-fixable input and `main()` converts it to a polite exit 1,
+> but a caller passing `top=0` is a programming error and should not be dressed up
+> as bad user input.
+
+Disclosing that it changed two of its own tests:
+
+> **Two of my own tests failed and I changed them, not the code:**
+> `test_no_campaign_is_summarized_without_being_listed` and
+> `test_top_composes_with_a_skipped_zero_recipient_row` both asserted the literal
+> `"1 campaigns"`. Item 6 is precisely what made them wrong, so I updated them to
+> expect correct pluralization.
+
+The zero-orders file with `--top 1`, which previously produced a traceback:
+
+```
+CAMPAIGN                     SENT        RECIPIENTS    OPEN   CLICK     CVR      REVENUE      RPR
+-------------------------------------------------------------------------------------------------
+Attribution Lag              2026-03-04      1,000   50.0%    5.0%    0.0%      $900.00    $0.90
+
+1 campaign  |  1,000 recipients  |  $900.00 revenue
+Blended open 50.0%  |  click 5.0%  |  CTOR 10.0%  |  CVR 0.0%
+Revenue per recipient $0.90  |  AOV n/a
+```
+
+> Only the genuinely undefined metric degrades. CTOR, RPR, and revenue stay real
+> numbers, and `CVR 0.0%` is correct rather than `n/a` because zero orders over
+> 1,000 recipients is a defined rate of zero.
+
+Answering "was any of my six requests wrong?", the correction to my reasoning:
+
+> **Item 3's rationale is partly superseded by item 1, though the change is still
+> worth making.** You justified it as "so `build_report` and `top_campaigns` cannot
+> be made to divide by zero by a caller." I tested this by applying item 1 and then
+> removing the item 3 guards: `build_report(campaigns, top=0)` does **not** divide
+> by zero any more. [...] So item 1 already defuses the crash. What item 3 actually
+> prevents is a *meaningless report* rather than an exception. I implemented it as
+> you asked and I think raising is right, but the guard earns its place as "refuse
+> to describe nothing", not "prevent a ZeroDivisionError".
+
+And on its own invalid first verification of item 4:
+
+> I initially tested with `Decimal`, which proved nothing: `decimal.InvalidOperation`
+> is an `ArithmeticError`, so it escapes `except (TypeError, ValueError)` before the
+> message is ever built. Retested with an unmapped cast that raises `ValueError` and
+> got the correct fallback.
+
+*Supervisor verification of this round is recorded in
+`docs/02-checkpoint-records.md`, Checkpoint 3. I re-derived the byte-identity
+claim, the 97-test count, the untouched baseline suite, the fixed crash, and the
+correction to my own item-3 rationale.*
