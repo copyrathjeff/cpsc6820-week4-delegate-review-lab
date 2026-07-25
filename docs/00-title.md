@@ -31,9 +31,11 @@ planned, edited, and ran its own tests with no human prompt per step.
    including where the agent was wrong and where I was. Abridged for length; the
    complete transcript is `docs/appendix-transcript.md` in the repository.
 7. **CPSC 6820 Literature Component.** The additional graduate requirement, on
-   Mozannar et al. (CHI 2024). Included here as a final labeled part rather than a
-   separate file, since only one Canvas item was available. It is self-contained and
-   can be graded on its own.
+   Mozannar et al. (CHI 2024). Included here as a labeled part rather than a separate
+   file, since only one Canvas item was available. It is self-contained and can be
+   graded on its own.
+8. **AI Use Disclosure.** What AI did in this lab and in this report, and which
+   decisions were mine. Placed at the end as the assignment directs.
 
 ## Result in brief
 
@@ -50,16 +52,5 @@ zero *recipients* and never zero *opens*, three lines from the property that
 divides by opens. And AC8, which failed against **correct** code because it
 encoded a specification my own CP1 ruling had superseded, in the very same edit
 where I amended AC6 for exactly that reason. Section 2 records all three.
-
-**AI use.** This lab's subject is agentic AI, and AI was used throughout. The
-delegated agent (`claude-sonnet-5`) authored the validation layer, the `--top N`
-feature, and 92 of the tests, attributed per commit with `Assisted-by` trailers. A
-supervising Claude Code session (`claude-opus-5`) ran the verification commands quoted
-in these pages and drafted the documents themselves, and a later proofreading pass
-caught nine factual errors in those drafts. Mine were the decisions: the base program
-and checkpoint design, the CP1 ruling on zero-recipient rows where I overrode both the
-agent's plan and the supervising session's recommendation, the reversal of my own CP2
-scope ruling at CP3, the six changes required before merge, and the editorial calls on
-what shipped.
 
 <div class="page-break"></div>
