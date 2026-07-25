@@ -1,56 +1,53 @@
 # Reflection
 
-**Where the checkpoints were, and what they caught.** Three gates: plan approval
-before any code, a mid-implementation stop after the validation layer, and a full
-diff review before merge. Each caught something. None caught what I designed it to
-catch.
+**Where the checkpoints were, and what they caught.** Three gates. Plan approval
+before any code. A stop after the validation layer. A full diff review before
+merge. Each caught something. None caught what I built it to catch.
 
-CP1 caught decisions rather than errors. Nothing in the plan was broken. The gate
-surfaced two choices I disagreed with: a blanket `except Exception` proposed so
-"no code path can ever leak a raw traceback," which would satisfy my requirement
-while destroying its purpose; and a hard failure on a zero-recipient row where I
-wanted skip-and-warn. Both would have been costlier to argue once load-bearing in a
-300-line diff. The module's claim that a five-line plan beats a
-500-line diff held, but not as I assumed: I expected mistakes and got judgment.
+CP1 caught decisions, not errors. It wanted a blanket `except Exception` in `main()`
+so no path could "leak a raw traceback." That meets my requirement and defeats its
+point, since every real bug becomes a polite exit 1. It also planned to
+fail the whole run on a zero-recipient row, where I wanted a skip and a warning.
+Both would have been harder to argue about once buried in a 300-line diff. So a
+five-line plan really does beat a 500-line diff, but not for the reason I expected.
+I looked for mistakes and found judgment calls.
 
-CP2's honest verdict is that it confirmed rather than detected. All four checkable
-claims in its self-report survived independent re-derivation. I could not have
-known that without checking, and the fourth was the one it had most incentive to
-get wrong, since it assigned a bug to me rather than itself.
+CP2 confirmed rather than detected. The agent made four checkable claims and all
+four held up when I ran them myself. I could not have known that otherwise. And the
+fourth was the claim it had the most reason to fudge. It blamed a bug on me
+instead of itself.
 
-CP3 earned its place. The agent disclosed that `--top` widened the reachability of
-a pre-existing zero-denominator crash: the same CSV gave a clean report without the
-flag, a traceback with it. That reversed my CP2 ruling that the bug was out of
-scope. The line of code was old, but which inputs reached it was new, and that made
-it this change's problem.
+CP3 earned its place. The agent told me its new `--top` flag made an old crash
+reachable. Same CSV file: clean report without the flag, traceback with it. That
+reversed my CP2 ruling that the bug was out of scope. The line was old, but which
+files reached it was new.
 
-**Failure modes.** Test gaming: none. The baseline suite was never touched, and
-when one of its own tests failed it reported the failure as its wrong expectation
-rather than the code, noting unprompted that a sloppier fix would have "fixed" the
-code to match. Scope creep: one instance, mild and self-disclosed, a golden output
-file outside its approved plan. Confident wrong turns: none, because it asked
-instead, surfacing five ambiguities at CP1 including one I planted.
+**Failure modes.** Test gaming: none. It never touched the baseline tests. One of
+its own tests failed and it told me the test was wrong, not the code, noting unasked
+that a lazier fix would have edited the code to match. Scope creep: one small case,
+a golden output file outside its plan, which it flagged itself. Confident
+wrong turns: none. It asked instead, raising five gaps in my spec at CP1, including
+one I planted.
 
-The uncomfortable finding is that the failure modes I was policing showed up in me.
-The `ZeroDivisionError` was in my baseline. My AC6 tested zero recipients and never
-zero opens, three lines from the property that divides by opens. And AC8 failed
-against correct code because it encoded a specification my own CP1 ruling had
-superseded, in the same edit where I amended AC6 for that reason. I built a process
-to catch the agent's drift and it caught mine.
+Here is what I did not expect. The failures I was watching for showed up in me.
+The `ZeroDivisionError` was in my own baseline. My AC6 tested zero recipients but
+never zero opens, though `click_to_open_rate` divides by opens three lines away. And
+AC8 failed against correct code, because it still held a spec my own CP1 ruling had
+replaced. I edited AC6 for that reason in the same commit and never re-read the
+other nine. I built this to catch the agent drifting. It caught me.
 
-**How reviewing it felt different.** Cleaner and more dangerous. The diff arrived
-better organized than a colleague's first draft and better documented than my own
-baseline, the polish-exceeding-correctness signature the module warns about. The
-subtler hazard was the candid self-report: a thorough-sounding list of an author's
-own defects invites you to treat it as complete, and the one blocking bug it
-missed, a public function unguarded where the CLI was guarded, I found only by
-looking past that list. Reviewing a classmate, I would also be managing a person.
-Here the entire cost was cognitive, which sounds like an advantage and mostly means
-nothing slows you down at the moment you should be slowing down.
+**How reviewing it felt different.** Cleaner, and more dangerous. The diff was
+better organized than a classmate's first draft and better documented than my
+baseline. That is the polish-beats-correctness problem the module warns about. But
+the bigger trap was how honest it was about its own bugs. A list that thorough makes
+you assume it is complete. It missed one: a public function left unguarded while the
+CLI was guarded. I only found that by looking past its list. Reviewing a classmate,
+I would also be managing how they feel. Here there was nothing to manage. That
+sounds like a win. Mostly it means nothing slows you down when you should.
 
-**Would I trust this on a real team?** Yes, under three conditions. Verification the
-agent cannot reach, since hiding my acceptance tests is why AC8 surfaced at all.
-Gates at points of no return rather than at intervals, because the mid-run gate
-mostly confirmed while the pre-merge gate caught the regression. And whoever merges
-owns it, because "the AI wrote it" survives no incident review. One cost I failed
-to price: concealing the tests made the agent rebuild a guard I had.
+**Would I trust this on a real team?** Yes, with three conditions. Keep some tests
+where the agent cannot reach them, since that is the only reason AC8 turned up. Put
+the gates at points of no return, not on a timer, because the pre-merge gate caught
+the real problem and the mid-run gate did not. And whoever merges owns it, because
+"the AI wrote it" will not survive an incident review. One cost I missed: the agent
+rebuilt a guard I had, because it could not see mine.

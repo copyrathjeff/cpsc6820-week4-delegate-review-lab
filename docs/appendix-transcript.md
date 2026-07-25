@@ -6,8 +6,12 @@ context across all three checkpoints, so each gate resumed the same worker rathe
 than briefing a fresh one. Between gates it planned, edited, and ran its own
 tests with no human prompt per step.
 
-Reproduced verbatim. Tool-call chatter and file dumps are elided where marked;
+Reproduced verbatim. Tool-call chatter and file dumps are elided where marked, and
 nothing in the agent's prose is edited, including the parts where it is wrong.
+
+One mechanical exception, noted so that "verbatim" stays true: dash characters are
+normalized throughout this document, with em and en dashes rendered as hyphens, in
+both my prompts and the agent's replies. No wording, claim, or figure is altered.
 
 ---
 
