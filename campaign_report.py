@@ -9,6 +9,7 @@ numbers go into a client report.
 Usage:
     python campaign_report.py data/campaigns.csv
     python campaign_report.py data/campaigns.csv --sort rpr
+    python campaign_report.py data/campaigns.csv --top 3
 """
 
 from __future__ import annotations
@@ -39,6 +40,11 @@ NUMERIC_COLUMNS = (
     ("revenue", float),
 )
 
+# How to describe each numeric type in an error message. A count column that
+# rejects "41250.5" is rejecting it for not being whole, not for not being
+# numeric, and the message has to say which.
+NUMERIC_KINDS = {int: "a whole number", float: "a number"}
+
 
 class CampaignReportError(Exception):
     """A problem with the input that the user can act on.
@@ -49,9 +55,25 @@ class CampaignReportError(Exception):
     """
 
 
+def ratio(numerator, denominator):
+    """Divide, or return None when the denominator is zero.
+
+    A rate with no denominator is undefined, not zero. A send with no orders
+    has no average order value, and printing $0.00 would state something
+    different and false.
+    """
+    if denominator == 0:
+        return None
+    return numerator / denominator
+
+
 @dataclass
 class Campaign:
-    """One campaign send, plus the rate metrics derived from it."""
+    """One campaign send, plus the rate metrics derived from it.
+
+    Every rate is None when its denominator is zero, which the formatters
+    render as "n/a" rather than raising.
+    """
 
     campaign_id: str
     name: str
@@ -63,28 +85,28 @@ class Campaign:
     revenue: float
 
     @property
-    def open_rate(self) -> float:
-        return self.opens / self.recipients
+    def open_rate(self) -> float | None:
+        return ratio(self.opens, self.recipients)
 
     @property
-    def click_rate(self) -> float:
-        return self.clicks / self.recipients
+    def click_rate(self) -> float | None:
+        return ratio(self.clicks, self.recipients)
 
     @property
-    def click_to_open_rate(self) -> float:
-        return self.clicks / self.opens
+    def click_to_open_rate(self) -> float | None:
+        return ratio(self.clicks, self.opens)
 
     @property
-    def conversion_rate(self) -> float:
-        return self.orders / self.recipients
+    def conversion_rate(self) -> float | None:
+        return ratio(self.orders, self.recipients)
 
     @property
-    def revenue_per_recipient(self) -> float:
-        return self.revenue / self.recipients
+    def revenue_per_recipient(self) -> float | None:
+        return ratio(self.revenue, self.recipients)
 
     @property
-    def average_order_value(self) -> float:
-        return self.revenue / self.orders
+    def average_order_value(self) -> float | None:
+        return ratio(self.revenue, self.orders)
 
 
 SORT_KEYS = {
@@ -109,7 +131,9 @@ def warn(message: str) -> None:
 def open_csv(path):
     """Open *path* for reading, or raise CampaignReportError explaining why not."""
     try:
-        return open(path, newline="", encoding="utf-8")
+        # utf-8-sig so a byte order mark on a platform export is consumed
+        # instead of being glued onto the first column name.
+        return open(path, newline="", encoding="utf-8-sig")
     except FileNotFoundError:
         raise CampaignReportError(f"CSV file not found: {path!r}") from None
     except IsADirectoryError:
@@ -145,9 +169,12 @@ def parse_numeric(raw, column, row_number, cast):
         value = cast(raw)
     except (TypeError, ValueError):
         shown = "(empty)" if raw is None else repr(raw)
+        # .get, not [], so an unmapped cast cannot make the error reporter
+        # itself raise while it is reporting an error.
+        kind = NUMERIC_KINDS.get(cast, "a number")
         raise CampaignReportError(
-            f"data row {row_number}: column {column!r} has a non-numeric "
-            f"value {shown}"
+            f"data row {row_number}: column {column!r} expects {kind}, "
+            f"got {shown}"
         ) from None
     if value < 0:
         raise CampaignReportError(
@@ -220,13 +247,20 @@ def totals(campaigns):
     )
 
 
-def pct(value: float) -> str:
-    """Format a 0-1 ratio as a percentage string."""
+NOT_APPLICABLE = "n/a"
+
+
+def pct(value: float | None) -> str:
+    """Format a 0-1 ratio as a percentage string, or n/a if it is undefined."""
+    if value is None:
+        return NOT_APPLICABLE
     return f"{value * 100:.1f}%"
 
 
-def money(value: float) -> str:
-    """Format a dollar amount with a thousands separator."""
+def money(value: float | None) -> str:
+    """Format a dollar amount with a thousands separator, or n/a if undefined."""
+    if value is None:
+        return NOT_APPLICABLE
     return f"${value:,.2f}"
 
 
@@ -256,9 +290,11 @@ def format_header() -> str:
 def format_summary(campaigns) -> str:
     """Render the account-level summary block."""
     roll = totals(campaigns)
+    count = len(campaigns)
+    noun = "campaign" if count == 1 else "campaigns"
     lines = [
         "",
-        f"{len(campaigns)} campaigns  |  {roll.recipients:,} recipients  |  "
+        f"{count} {noun}  |  {roll.recipients:,} recipients  |  "
         f"{money(roll.revenue)} revenue",
         f"Blended open {pct(roll.open_rate)}  |  "
         f"click {pct(roll.click_rate)}  |  "
@@ -270,13 +306,58 @@ def format_summary(campaigns) -> str:
     return "\n".join(lines)
 
 
-def build_report(campaigns, sort_key="date") -> str:
-    """Build the full report string for *campaigns* in the requested order."""
-    ordered = sorted(campaigns, key=SORT_KEYS[sort_key])
+def top_campaigns(campaigns, count):
+    """Return the *count* campaigns with the highest revenue per recipient.
+
+    Selection reads the metric off the campaign directly and deliberately
+    does not go through SORT_KEYS, so that editing a display constant cannot
+    silently change which campaigns this picks. Ties keep their original file
+    order, since sorted() is stable. Asking for more than there are returns
+    all of them.
+
+    Raises ValueError for a count below 1. The CLI rejects those before they
+    reach here, so one can only arrive from a caller importing this module,
+    and an empty selection would otherwise produce a report describing
+    nothing.
+    """
+    if count < 1:
+        raise ValueError(f"count must be 1 or more, got {count!r}")
+    return sorted(
+        campaigns, key=lambda c: c.revenue_per_recipient, reverse=True
+    )[:count]
+
+
+def build_report(campaigns, sort_key="date", top=None) -> str:
+    """Build the full report string for *campaigns* in the requested order.
+
+    *top* trims the report to that many campaigns, the best first by revenue
+    per recipient, before *sort_key* decides the order they are displayed in.
+    The summary covers exactly the campaigns in the table above it, so a
+    trimmed report never summarizes rows it did not list.
+
+    Raises ValueError if there are no campaigns to report on.
+    """
+    if not campaigns:
+        raise ValueError("cannot build a report from zero campaigns")
+    selected = campaigns if top is None else top_campaigns(campaigns, top)
+    ordered = sorted(selected, key=SORT_KEYS[sort_key])
     lines = [format_header()]
     lines.extend(format_row(c) for c in ordered)
-    lines.append(format_summary(campaigns))
+    lines.append(format_summary(selected))
     return "\n".join(lines)
+
+
+def positive_int(raw):
+    """argparse type for --top. A malformed flag is a usage error, not a data error."""
+    try:
+        value = int(raw)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expects a whole number, got {raw!r}"
+        ) from None
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"expects 1 or more, got {value}")
+    return value
 
 
 def parse_args(argv=None):
@@ -290,6 +371,16 @@ def parse_args(argv=None):
         choices=sorted(SORT_KEYS),
         default="date",
         help="column to order the table by (default: date)",
+    )
+    parser.add_argument(
+        "--top",
+        type=positive_int,
+        default=None,
+        metavar="N",
+        help=(
+            "show only the N campaigns with the highest revenue per "
+            "recipient (default: show all)"
+        ),
     )
     return parser.parse_args(argv)
 
@@ -306,7 +397,7 @@ def main(argv=None) -> int:
     except CampaignReportError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
-    print(build_report(campaigns, args.sort))
+    print(build_report(campaigns, args.sort, top=args.top))
     return 0
 
 

@@ -100,6 +100,16 @@ def test_extra_columns_are_allowed(tmp_path):
     assert len(campaigns) == 1
 
 
+def test_byte_order_mark_does_not_hide_the_first_column(tmp_path):
+    """A BOM-prefixed export is common and must not read as a missing column."""
+    path = tmp_path / "bom.csv"
+    path.write_text("\n".join([HEADER, GOOD_ROW]) + "\n", encoding="utf-8-sig")
+    assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+    campaigns = cr.load_campaigns(str(path))
+    assert len(campaigns) == 1
+    assert campaigns[0].campaign_id == "c1001"
+
+
 # --- 3. non-numeric values in numeric columns ----------------------------
 
 
@@ -144,7 +154,10 @@ def test_short_row_names_the_missing_column(tmp_path):
     assert "opens" in message
 
 
-def test_decimal_in_an_integer_column_is_rejected(tmp_path):
+def test_decimal_in_an_integer_column_says_whole_number_not_non_numeric(
+    tmp_path,
+):
+    """41250.5 is a number, so the message must not claim otherwise."""
     path = write_csv(
         tmp_path,
         HEADER,
@@ -152,7 +165,11 @@ def test_decimal_in_an_integer_column_is_rejected(tmp_path):
     )
     with pytest.raises(cr.CampaignReportError) as excinfo:
         cr.load_campaigns(path)
-    assert "recipients" in str(excinfo.value)
+    message = str(excinfo.value)
+    assert "recipients" in message
+    assert "whole number" in message
+    assert "41250.5" in message
+    assert "non-numeric" not in message
 
 
 # --- 4. negative numbers -------------------------------------------------
