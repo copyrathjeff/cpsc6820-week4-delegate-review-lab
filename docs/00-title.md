@@ -26,8 +26,10 @@ planned, edited, and ran its own tests with no human prompt per step.
 4. **Reflection.** 598 words.
 5. **Version Control Record.** Branch topology, commit structure, and attribution
    convention, generated from the repository.
-6. **Appendix: Prompts and Transcript.** Every prompt and every agent response,
-   verbatim, including where the agent was wrong and where I was.
+6. **Appendix: Prompts and Transcript.** The delegation prompt in full, plus the parts
+   of each agent response needed to check the checkpoint records, quoted verbatim
+   including where the agent was wrong and where I was. Abridged for length; the
+   complete transcript is `docs/appendix-transcript.md` in the repository.
 7. **CPSC 6820 Literature Component.** The additional graduate requirement, on
    Mozannar et al. (CHI 2024). Included here as a final labeled part rather than a
    separate file, since only one Canvas item was available. It is self-contained and
@@ -48,3 +50,5 @@ zero *recipients* and never zero *opens*, three lines from the property that
 divides by opens. And AC8, which failed against **correct** code because it
 encoded a specification my own CP1 ruling had superseded, in the very same edit
 where I amended AC6 for exactly that reason. Section 2 records all three.
+
+<div class="page-break"></div>

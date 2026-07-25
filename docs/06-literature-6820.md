@@ -1,3 +1,5 @@
+<div class="page-break"></div>
+
 # CPSC 6820 Literature Component
 
 **The +25 graduate requirement for Assignment 4.1.** Jeff Branyon. Summer 2026.

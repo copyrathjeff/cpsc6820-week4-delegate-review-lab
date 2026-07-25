@@ -63,46 +63,31 @@ stderr contain no `Traceback`, because "it errors" and "it errors usefully" are 
 | AC9 | `--top 0` and `--top -1` are rejected as invalid input. |
 | AC10 | All 5 baseline tests still pass, and the module imports nothing outside the standard library. |
 
-**Note on AC8, and why it is a harder call than AC6.** AC8 originally required
-`--top 3` to print the three campaigns in descending revenue-per-recipient order.
-It was the one acceptance test that failed against the agent's branch, and the
-failure was mine: at CP1 I ruled that `--top` selects while `--sort` orders, which
-contradicts AC8 as written. The agent implemented the ruling correctly. I amended
-AC6 for precisely this reason in the same commit, `a8dc4cd`, and never noticed AC8
-needed identical treatment.
+**Note on AC6, amended at CP1.** As first written, AC6 accepted either a hard failure
+or a safe render. At CP1 I chose skip-and-continue over the agent's proposed hard
+failure and tightened AC6 to require the skip be announced on stderr. That amendment
+predates any agent code. Editing a test to match a decision made at a checkpoint is
+specification refinement, which is what checkpoints are for; editing one to match code
+the agent already wrote would be test gaming. Ordering separates them, and the log
+records it: this amendment is commit 3, and the agent's first line of code lands after.
 
-The AC6 amendment was easy to justify because it happened before any code existed.
-This one is not, and I want to be explicit about that rather than quietly fix it.
-I amended AC8 **after** seeing the implementation, which is the exact direction
-test gaming runs in, and "the code disagreed with my test so I changed my test" is
-the sentence a grader should be suspicious of.
+**Note on AC8, a harder call.** AC8 originally demanded descending RPR order. It was
+the one acceptance test that failed against the agent's branch, and the failure was
+mine. At CP1 I ruled that `--top` selects while `--sort` orders, which contradicts AC8
+as written; the agent implemented the ruling correctly. I amended AC6 for exactly this
+reason in commit `a8dc4cd` and never noticed AC8 needed the same treatment.
 
-What makes it refinement rather than gaming is that the superseding decision is
-timestamped, in writing, before the code: commit `a8dc4cd` records the
-`--top` filters / `--sort` orders ruling, and `50959d0` is where `--top` first
-exists. The amendment conforms the test to a documented earlier decision, not to
-whatever the agent happened to produce. Anyone can verify that ordering with
-`git log`.
+I amended AC8 **after** seeing the implementation, which is the direction test gaming
+runs in, so it deserves stating plainly rather than quiet fixing. What makes it
+refinement is that the superseding decision is timestamped before the code: `a8dc4cd`
+records the ruling, `50959d0` is where `--top` first exists, and `git log` shows the
+order. The amendment conforms the test to a documented earlier decision, not to
+whatever the agent produced.
 
-The honest lesson is not that the amendment was fine. It is that my process had a
-hole: I refined one acceptance criterion at a checkpoint and failed to re-read the
-other nine against the same ruling. Had `--top` been genuinely wrong in the same
-way AC8 was stale, I would have had a failing test I was already primed to explain
-away.
-
-**Note on AC6.** As first written, AC6 accepted either a hard failure or a safe
-render. At Checkpoint 1 I chose skip-and-continue over the agent's proposed hard
-failure, and tightened AC6 to require that the skip be announced on stderr. The
-amendment was made before the agent wrote any code and while the acceptance
-tests were still outside its working tree.
-
-This is worth distinguishing carefully, because it looks superficially like the
-failure mode it is the opposite of. Editing a test to match a decision the human
-made at a checkpoint is specification refinement, which is what checkpoints are
-for. Editing a test to match code the agent had already written would be test
-gaming. The ordering is what separates them, and the git history records the
-ordering: this amendment is commit 3, and the agent's first line of code lands
-after it.
+The real lesson is not that the amendment was fine. It is that my process had a hole. I
+refined one criterion at a checkpoint and failed to re-read the other nine against the
+same ruling. Had `--top` been genuinely wrong in the way AC8 was stale, I would have
+had a failing test I was already primed to explain away.
 
 ## 3. My own test cases
 
@@ -125,21 +110,20 @@ order, which is date by default, so a companion test pins the descending-RPR ord
 under `--top 3 --sort rpr`. Guards against both an off-by-one row count and ranking
 by the wrong column, since raw revenue would select a different third campaign.
 
-As first written, this test additionally demanded descending RPR order in the
-default view. That is the stale requirement described in the note on AC8 above, and
-it is the one acceptance test that failed against correct code.
+As first written, this test additionally demanded descending RPR order in the default
+view. That is the stale requirement described in the note on AC8, and it is the one
+acceptance test that failed against correct code.
 
-**Why these are black-box subprocess tests.** Every acceptance test shells out
-to `python campaign_report.py ...` and asserts on exit code, stdout, and stderr.
-The module's failure mode here is test gaming, and an agent can always satisfy
-an internal unit test by changing the internals it asserts against. It cannot
-satisfy an observable-behavior test without the behavior actually being correct.
+**Why black-box subprocess tests.** Every acceptance test shells out to `python
+campaign_report.py ...` and asserts on exit code, stdout, and stderr. Test gaming is
+the failure mode here, and an agent can always satisfy an internal unit test by
+changing the internals it asserts against. It cannot satisfy an observable-behavior
+test without the behavior actually being correct.
 
-**Why they live only on `main`.** Part A.3 of the module says to keep
-verification the agent cannot grade itself on. Committing these to `main` and
-cutting the agent's branch from the earlier baseline commit makes that
-structural rather than a matter of the agent's cooperation: the files are not in
-its working tree, so "please don't edit the tests" is not a rule it has the
+**Why they live only on `main`.** Part A.3 says to keep verification the agent cannot
+grade itself on. Committing these to `main` and cutting the branch from the earlier
+baseline commit makes that structural rather than a matter of cooperation: the files
+are not in its working tree, so "please don't edit the tests" is not a rule it has the
 opportunity to break. I merge them onto the branch myself at Checkpoint 3.
 
 ## 4. Checkpoints

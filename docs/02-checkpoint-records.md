@@ -130,12 +130,11 @@ of the prose.
 | Valid-run output unchanged | Diffed live stdout against my hidden golden file | Byte-identical, stderr empty, exit 0. True. |
 | The `ZeroDivisionError` pre-exists in my baseline | Ran the same CSV against `git show 93335ad:campaign_report.py` | Identical traceback from the baseline. **True.** |
 
-All four held. I want that recorded plainly, because the honest lesson of CP2 is
-not the one I expected to be writing: at this gate the checkpoint's value was
-**confirmation, not detection.** That is not the same as the gate being useless.
-I could not have known the report was accurate without checking, and the fourth
-claim is precisely the kind an agent has an incentive to get wrong, since it
-assigns a bug to me rather than to itself.
+All four held. Recorded plainly because the lesson is not the one I expected: at this
+gate the value was **confirmation, not detection.** That is not the same as the gate
+being useless. I could not have known the report was accurate without checking, and
+the fourth claim is the kind an agent has an incentive to get wrong, since it assigns
+a bug to me rather than itself.
 
 ### The finding I did not expect: it found a bug in my code, through a hole in my own tests
 
@@ -145,37 +144,33 @@ added, then dies with a raw `ZeroDivisionError` in `format_summary` on
 `click_to_open_rate`. I verified it against the baseline commit: **it is my bug**,
 written into the baseline before the agent existed.
 
-Worse for me, it is a bug my own acceptance criteria could not have caught. AC6
-tests zero *recipients*. It never occurred to me to test zero *opens*, even
-though `click_to_open_rate` divides by `opens` three lines below the property I
-did think about. The agent found by reading what I failed to specify by writing.
+Worse, it is a bug my own acceptance criteria could not have caught. AC6 tests zero
+*recipients*. It never occurred to me to test zero *opens*, though
+`click_to_open_rate` divides by `opens` three lines below the property I did think
+about. The agent found by reading what I failed to specify by writing.
 
-That inverts the framing I began the lab with. I designed these checkpoints on
-the assumption that the human supplies correctness and the agent supplies speed.
-Here the agent supplied a correctness finding about the supervisor's own work,
-and the carefully pre-committed test suite was the artifact with the gap in it.
+That inverts the framing I started with. I designed these gates assuming the human
+supplies correctness and the agent supplies speed. Here the agent supplied a
+correctness finding about the supervisor's own work, and the pre-committed test suite
+was the artifact with the gap in it.
 
 ### Scope: one unplanned file, self-disclosed
 
-It created `tests/expected_report.txt`, a golden copy of the valid-run output,
-and flagged it unprompted as "not in my approved plan," offering to delete it.
+It created `tests/expected_report.txt`, a golden copy of the valid-run output, and
+flagged it unprompted as "not in my approved plan," offering to delete it.
 
-That is scope creep in the literal sense. It is also the most interesting
-artifact of the lab, because **it duplicates a file I had already written and
-deliberately hidden from it.** My `tests/golden/baseline_report.txt` does the
-same job. The agent independently concluded that "do not change the output of a
-valid run" needed a golden-file guard and built one, because I had concealed the
-one that already existed.
+That is scope creep in the literal sense, and also the most interesting artifact of
+the lab, because **it duplicates a file I had already written and deliberately hidden
+from it.** My `tests/golden/baseline_report.txt` does the same job. The agent
+independently concluded that "do not change the output of a valid run" needed a
+golden-file guard and built one, because I had concealed the one that already existed.
 
-So the isolation strategy carries a cost the module does not mention. Keeping
-verification outside the agent's control also keeps it outside the agent's
-*knowledge*, and an agent that cannot see your tests will rebuild them. I paid
-for that protection in duplicated work. I would still make the same trade, but I
-would now expect the duplication rather than be surprised by it.
-
-I let the file stand through Part 2, where it actively guards output invariance,
-rather than remove a working guard mid-task. It was consolidated after the merge,
-in `9a05ddb`.
+So the isolation carries a cost the module does not mention. Keeping verification
+outside the agent's control also keeps it outside the agent's *knowledge*, and an
+agent that cannot see your tests will rebuild them. I would still make the trade, but
+I would now expect the duplication instead of being surprised by it. I let the file
+stand through Part 2, where it actively guards output invariance, and consolidated it
+after the merge in `9a05ddb`.
 
 ### Rulings issued at this gate
 

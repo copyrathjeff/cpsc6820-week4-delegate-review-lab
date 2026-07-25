@@ -14,16 +14,13 @@ is the exception and says so: it describes a latent fault that cannot currently 
 triggered. Comments are ordered by
 what I would want fixed first, not by where they appear in the file.
 
-Two notes on calibration before the comments. First, the module warns that
-AI-generated code "looks more polished than its correctness warrants," and that
-is a fair description of this diff: it is well-organized, the docstrings are
-accurate, and the naming is consistent, which made it pleasant to read and
-therefore easy to under-scrutinize. Second, this diff arrived with an unusually
-candid self-report, which changed my job in a way I did not anticipate. Several
-of the defects below were disclosed to me by the author. That is genuinely
-useful, and it is also a subtler review hazard than an agent that hides things:
-a thorough-sounding self-assessment invites you to treat its list as the
-complete list. Comment 3 is one I found only because I went looking past it.
+Two calibration notes. The module warns that AI code "looks more polished than its
+correctness warrants," which fairly describes this diff: well-organized, accurate
+docstrings, consistent naming, pleasant to read and therefore easy to
+under-scrutinize. And it arrived with an unusually candid self-report. Several defects
+below were disclosed by the author. That is useful, and also a subtler hazard than an
+agent that hides things, because a thorough-sounding self-assessment invites you to
+treat its list as the complete list. Comment 3 I found only by looking past it.
 
 ---
 

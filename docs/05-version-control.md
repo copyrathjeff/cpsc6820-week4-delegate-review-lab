@@ -91,18 +91,15 @@ the merge that brought them to `main`. Every other commit in the repository is
 human-authored and carries no trailers. That set is final, since no further agent
 work followed the merge.
 
-**Why anchored, which I learned by getting it wrong.** I first documented this as
-`git log --grep='Assisted-by'`, unanchored, and asserted it returned "exactly the
-commits containing agent-authored code, and nothing else." Then I wrote a commit
-message that *discussed* the convention, and the unanchored pattern matched its
-prose. The audit query started returning human-only commits, two of them by the end, and
-the claim in this document stopped reproducing about sixty seconds after I made it.
-
-It is a small bug with a real point behind it. An attribution convention is only
-as good as the query that audits it, a substring match over a whole commit message
-is not that query, and I found this only because I re-ran my own documented command
-against the pushed repository instead of trusting the output I had already pasted
-in. `^Assisted-by:` matches the trailer and not discussion of the trailer.
+**Why anchored, learned by getting it wrong.** I first documented this unanchored, as
+`git log --grep='Assisted-by'`, and claimed it returned only commits with
+agent-authored code. Then I wrote a commit message that *discussed* the convention,
+the pattern matched its prose, and the query started returning human-only commits, two
+by the end. The claim stopped reproducing about a minute after I made it. Small bug,
+real point: an attribution convention is only as good as the query that audits it, and
+a substring match over a whole message is not that query. I caught it only by re-running
+my own documented command against the pushed repo instead of trusting output I had
+already pasted in.
 
 ## Verification at the merge commit
 
